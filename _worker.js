@@ -3,8 +3,8 @@
 
 const MAX_LEN = 60;
 const LIST_LIMIT = 500;
-const WAIT_SEC = 15;        // 同じ人が続けて投稿できるまでの秒数
-const PER_HOUR = 30;        // 同じ人が1時間に投稿できる数
+const WAIT_SEC = 3;         // 連打・自動投稿よけ（同じ人が続けて投稿できるまでの秒数）
+const PER_HOUR = 0;         // 1時間あたりの上限（0 = 上限なし）
 const DEFAULT_NG = ["http", "https", "www.", ".com", ".jp", "死ね", "しね", "殺す", "ころす", "きもい", "キモい", "うざい", "ブス"];
 
 const json = (body, status = 200) =>
@@ -52,7 +52,7 @@ async function postsPost({ request, env }) {
     .bind(now - WAIT_SEC * 1000, iph, now - 3600 * 1000)
     .first();
   if (recent && recent.short > 0) return json({ error: "ちょっと待ってからもう一度どうぞ。" }, 429);
-  if (recent && recent.hour >= PER_HOUR) return json({ error: "たくさん投稿してくれてありがとう！ 少し時間をあけてね。" }, 429);
+  if (PER_HOUR > 0 && recent && recent.hour >= PER_HOUR) return json({ error: "たくさん投稿してくれてありがとう！ 少し時間をあけてね。" }, 429);
 
   await env.DB.batch([
     env.DB.prepare("INSERT INTO posts (text, at, iph) VALUES (?, ?, ?)").bind(text, now, iph),
