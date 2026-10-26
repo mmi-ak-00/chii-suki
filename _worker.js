@@ -218,6 +218,17 @@ export default {
     } catch (e) {
       return json({ error: "サーバーでエラーが起きました。設定（DB のつなぎ方）を確認してください。" }, 500);
     }
-    return env.ASSETS.fetch(request);
+    const res = await env.ASSETS.fetch(request);
+    // Xなどで画像が出るよう、共有用画像のアドレスを「https://〜/ogp.png」の形に直す
+    const type = res.headers.get("content-type") || "";
+    if (type.includes("text/html") && typeof HTMLRewriter !== "undefined") {
+      const abs = new URL("/ogp.png", url).toString();
+      const fix = { element(el) { el.setAttribute("content", abs); } };
+      return new HTMLRewriter()
+        .on('meta[property="og:image"]', fix)
+        .on('meta[name="twitter:image"]', fix)
+        .transform(res);
+    }
+    return res;
   },
 };
