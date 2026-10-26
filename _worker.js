@@ -102,10 +102,12 @@ async function lettersPost({ request, env }) {
 // 並び順がそのまま「企画①②③…」の番号になります。
 // open: true は最初から公開。false は管理ページで「公開する」を押すまで COMING SOON 表示。
 // soon: COMING SOON のときに出す一言（例 "10/27公開予定"）。
+// showAfter: ここに書いた企画が公開されるまで、カード自体を出さない（例 "kikaku2"）。
 // page: このサイト内のページ名（例 "kikaku3" → kikaku3.html）。公開前はそのページも開けません。
 const PROJECTS = [
   { id: "map", title: "聖ちぃ巡礼マップ", desc: "ちぃちゃんの足跡をめぐろう🐾", href: "https://seichii-map.pages.dev", external: true, open: true },
   { id: "kikaku2", title: "ちぃちゃんの好きなところ", desc: "ちぃちゃんの好きなところを教えて💘", href: "/kikaku2", page: "kikaku2", open: false, soon: "10/27公開予定" },
+  { id: "kikaku3", title: "（企画③・内容は準備中）", desc: "", href: "", open: false, soon: "10/28公開予定", showAfter: "kikaku2" },
 ];
 
 let projectsReady = false;
@@ -116,13 +118,15 @@ async function projectStates(env) {
   }
   const { results } = await env.DB.prepare("SELECT id, open FROM project_state").all();
   const m = new Map(results.map((r) => [r.id, !!r.open]));
-  return PROJECTS.map((p) => ({ ...p, open: m.has(p.id) ? m.get(p.id) : !!p.open }));
+  const list = PROJECTS.map((p) => ({ ...p, open: m.has(p.id) ? m.get(p.id) : !!p.open }));
+  const isOpen = (id) => !!list.find((x) => x.id === id)?.open;
+  return list.map((p) => ({ ...p, visible: !p.showAfter || isOpen(p.showAfter) }));
 }
 
 async function projectsGet({ env }) {
   const list = await projectStates(env);
   return json({
-    projects: list.map((p) => p.open
+    projects: list.filter((p) => p.visible).map((p) => p.open
       ? { open: true, title: p.title, desc: p.desc, href: p.href, external: !!p.external }
       : { open: false, soon: p.soon || "" }),
   });
@@ -184,7 +188,7 @@ async function adminPost({ request, env }) {
       return json({ ok: true });
     case "projects": {
       const list = await projectStates(env);
-      return json({ projects: list.map((p) => ({ id: p.id, title: p.title, desc: p.desc, open: p.open, href: p.href || "", page: p.page || "" })) });
+      return json({ projects: list.map((p) => ({ id: p.id, title: p.title, desc: p.desc, open: p.open, href: p.href || "", page: p.page || "", visible: p.visible, showAfter: p.showAfter || "" })) });
     }
     case "set_project": {
       const pid = String(body.pid ?? "");

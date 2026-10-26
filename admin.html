@@ -174,7 +174,9 @@ async function loadProjects(){
       const li=document.createElement("li"); li.className="pj";
       const t=document.createElement("span"); t.className="t";
       t.textContent=`企画${NUM[i]||i+1}　${p.title}`;
-      const st=document.createElement("span"); st.className="st "+(p.open?"on":"off"); st.textContent=p.open?"公開中":"COMING SOON";
+      const st=document.createElement("span"); st.className="st "+(p.open?"on":"off");
+      st.textContent=p.open?"公開中":(p.visible?"COMING SOON":"まだ表示しない");
+      if(!p.visible){ const w=document.createElement("span"); w.className="m"; w.style.flexBasis="100%"; w.textContent="前の企画を公開すると、トップに「COMING SOON」で出てきます。"; li._note=w; }
       const btn=document.createElement("button"); btn.className=p.open?"sub":"";
       btn.textContent=p.open?"非公開にもどす":"公開する";
       btn.onclick=async()=>{
@@ -198,6 +200,7 @@ async function loadProjects(){
         pv.textContent=p.open?"ページを開く":"プレビューで見る";
         parts.push(pv);
       }
+      if(li._note) parts.push(li._note);
       li.append(...parts); return li;
     }));
   }catch(e){ $("pmsg").textContent=e.message; }
