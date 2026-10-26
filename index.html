@@ -64,8 +64,8 @@ li.new{animation:pop .5s ease}
 .letter h2{font-size:20px}
 .letter p{margin:0}
 .letter .note{font-size:13px;color:var(--muted)}
-.letter label{font-size:13px;font-weight:700}
-.field{display:flex;flex-direction:column;gap:4px}
+.letter label{font-family:var(--display);font-weight:800;font-size:15px;color:var(--accent)}
+.field{display:flex;flex-direction:column;gap:6px}
 #ln,#lm{font:inherit;font-size:16px;color:var(--fg);background:var(--bg);border:2px solid var(--line);border-radius:14px;padding:10px 14px;outline:none;width:100%}
 #lm{min-height:180px;resize:vertical;line-height:1.7}
 #ln:focus,#lm:focus{border-color:var(--accent)}
@@ -107,12 +107,12 @@ footer{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
     <p class="note">このメッセージはほかの人には表示されません。</p>
     <form id="lf" autocomplete="off" style="display:flex;flex-direction:column;gap:12px">
       <div class="field">
-        <label for="ln">お名前（ニックネーム）</label>
-        <input id="ln" maxlength="20" placeholder="例：さくら">
+        <label for="ln">ニックネーム（匿名も可）</label>
+        <input id="ln" maxlength="20" placeholder="例：ちぃ大好きっ子">
       </div>
       <div class="field">
-        <label for="lm">好きになったきっかけ</label>
-        <textarea id="lm" maxlength="1000" placeholder="例：初めてライブを見た日に、笑顔にひとめぼれしました" required></textarea>
+        <label for="lm">メッセージ</label>
+        <textarea id="lm" maxlength="1000" placeholder="例：◯◯のライブパフォーマンスを観て、惹かれました。" required></textarea>
       </div>
       <div class="lrow">
         <span class="lcount" id="lc">0 / 1000文字</span>
