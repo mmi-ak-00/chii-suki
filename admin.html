@@ -39,6 +39,7 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .pj .st{font-size:12px;font-weight:700;border-radius:999px;padding:2px 10px}
 .pj .st.on{background:var(--accent);color:var(--ink)}
 .pj .st.off{background:var(--line);color:var(--muted)}
+.pv{font-weight:700;font-size:14px;color:var(--accent)}
 .tag{font-size:12px;border-radius:999px;padding:1px 8px;background:var(--line)}
 </style>
 </head>
@@ -65,7 +66,7 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
     <ul id="letters"></ul>
   </section>
   <section id="projectsView" hidden style="display:flex;flex-direction:column;gap:12px">
-    <p class="msg" id="pmsg">「公開する」を押した企画だけがトップに表示されます。公開前の企画は「COMING SOON」と番号だけが出ます。</p>
+    <p class="msg" id="pmsg">「公開する」を押した企画だけがトップに表示されます。公開前の企画は「COMING SOON」と番号だけが出ます。「プレビューで見る」から、公開前のページをあなただけ確認できます。</p>
     <ul id="projects"></ul>
   </section>
   <div id="postsView" style="display:flex;flex-direction:column;gap:16px">
@@ -181,7 +182,23 @@ async function loadProjects(){
         try{ await call("set_project",null,{pid:p.id,open:!p.open}); $("pmsg").textContent=`企画${NUM[i]||i+1}を${p.open?"非公開にしました":"公開しました"}。`; await loadProjects(); }
         catch(e){ $("pmsg").textContent=e.message; btn.disabled=false; }
       };
-      li.append(t,st,btn); return li;
+      const parts=[t,st,btn];
+      if(p.href){
+        const full=new URL(p.href,location.origin).toString();
+        const cp=document.createElement("button"); cp.className="sub"; cp.type="button"; cp.textContent="URLをコピー";
+        cp.onclick=async()=>{
+          try{ await navigator.clipboard.writeText(full); cp.textContent="コピーしました！"; setTimeout(()=>cp.textContent="URLをコピー",1800); }
+          catch(e){ $("pmsg").textContent="コピーできなかったので、このURLを長押ししてコピーしてください："+full; }
+        };
+        const u=document.createElement("span"); u.className="m"; u.style.flexBasis="100%"; u.style.overflowWrap="anywhere"; u.textContent=full;
+        parts.push(cp,u);
+      }
+      if(p.page){
+        const pv=document.createElement("a"); pv.className="pv"; pv.href="/"+p.page; pv.target="_blank"; pv.rel="noopener";
+        pv.textContent=p.open?"ページを開く":"プレビューで見る";
+        parts.push(pv);
+      }
+      li.append(...parts); return li;
     }));
   }catch(e){ $("pmsg").textContent=e.message; }
 }

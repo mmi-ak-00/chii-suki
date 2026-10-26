@@ -135,6 +135,20 @@ function same(a, b) {
   return d === 0;
 }
 
+// ===== 管理者だけの「公開前プレビュー」 =====
+// 管理ページで合言葉を入れると、このブラウザにだけ印（クッキー）が付き、公開前の企画ページも開けます。
+async function previewToken(env) { return (await sha("preview:" + env.ADMIN_KEY)).slice(0, 40); }
+async function isPreviewer(request, env) {
+  if (!env.ADMIN_KEY) return false;
+  const m = (request.headers.get("Cookie") || "").match(/(?:^|;\s*)chii_pv=([0-9a-f]+)/);
+  return !!m && same(m[1], await previewToken(env));
+}
+async function withPreviewCookie(res, env) {
+  const r = new Response(res.body, res);
+  r.headers.append("Set-Cookie", `chii_pv=${await previewToken(env)}; Path=/; Max-Age=${60 * 60 * 24 * 14}; HttpOnly; Secure; SameSite=Lax`);
+  return r;
+}
+
 async function adminPost({ request, env }) {
   let body;
   try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
@@ -149,7 +163,7 @@ async function adminPost({ request, env }) {
     case "list": {
       const { results } = await env.DB
         .prepare("SELECT id, text, at, hidden FROM posts ORDER BY id DESC LIMIT 1000").all();
-      return json({ posts: results });
+      return await withPreviewCookie(json({ posts: results }), env);
     }
     case "hide":
     case "show":
@@ -170,7 +184,7 @@ async function adminPost({ request, env }) {
       return json({ ok: true });
     case "projects": {
       const list = await projectStates(env);
-      return json({ projects: list.map((p) => ({ id: p.id, title: p.title, desc: p.desc, open: p.open })) });
+      return json({ projects: list.map((p) => ({ id: p.id, title: p.title, desc: p.desc, open: p.open, href: p.href || "", page: p.page || "" })) });
     }
     case "set_project": {
       const pid = String(body.pid ?? "");
@@ -193,6 +207,7 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const c = { request, env, ctx };
+    let previewing = false;
     try {
       if (url.pathname === "/api/posts") {
         if (request.method === "GET") return await postsGet(c);
@@ -205,7 +220,10 @@ export default {
       if (PROJECTS.some((p) => p.page === pageName)) {
         const list = await projectStates(env);
         const p = list.find((x) => x.page === pageName);
-        if (p && !p.open) return Response.redirect(new URL("/", url).toString(), 302);
+        if (p && !p.open) {
+          if (!(await isPreviewer(request, env))) return Response.redirect(new URL("/", url).toString(), 302);
+          previewing = true;
+        }
       }
       if (url.pathname === "/api/letters") {
         if (request.method === "POST") return await lettersPost(c);
@@ -222,9 +240,14 @@ export default {
     // Xなどで画像が出るよう、共有用画像のアドレスを「https://〜/ogp.png」の形に直す
     const type = res.headers.get("content-type") || "";
     if (type.includes("text/html") && typeof HTMLRewriter !== "undefined") {
-      const abs = new URL("/ogp.png", url).toString();
-      const fix = { element(el) { el.setAttribute("content", abs); } };
-      return new HTMLRewriter()
+      const fix = { element(el) { el.setAttribute("content", new URL(el.getAttribute("content") || "/ogp.png", url).toString()); } };
+      let rw = new HTMLRewriter();
+      if (previewing) {
+        rw = rw.on("body", { element(el) {
+          el.prepend('<div style="position:sticky;top:0;z-index:50;background:#3b2a33;color:#fff;font:700 13px/1.5 system-ui,sans-serif;text-align:center;padding:8px 12px">非公開プレビュー中（このページはまだ公開されていません。見えているのは管理者のあなただけです）</div>', { html: true });
+        } });
+      }
+      return rw
         .on('meta[property="og:image"]', fix)
         .on('meta[name="twitter:image"]', fix)
         .transform(res);
