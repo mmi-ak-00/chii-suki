@@ -165,16 +165,22 @@ async function ttResolve(raw) {
   const um = final.pathname.match(/\/@([\w.]+)/);
   if (um && um[1].toLowerCase() !== TT_ACCOUNT) return { error: `@${TT_ACCOUNT} の動画だけ投稿できます。` };
   // TikTok公式の情報（oEmbed）で、動画があること・投稿者を確かめる
-  let info;
-  try {
-    const o = await ttOembed(vid);
-    if (!o.ok || !o.info) return { error: "動画が見つかりませんでした。URLを確認してね。" };
-    info = o.info;
-  } catch { return { error: "動画を確認できませんでした。少し待ってからもう一度どうぞ。" }; }
-  const author = String(info.author_unique_id || "").toLowerCase()
-    || String(info.author_url || "").split("@")[1]?.toLowerCase() || "";
-  if (author && author !== TT_ACCOUNT) return { error: `@${TT_ACCOUNT} の動画だけ投稿できます。` };
-  return { vid, title: String(info.title || "").slice(0, 200) };
+  // TikTok公式の情報（oEmbed）で確かめる。ただしTikTokに「問い合わせが多すぎる」と断られたときは、
+  // URLに @chii_nyan02 が入っていればそれで本人の動画とみなす（キャプションと画像は見る人のスマホが取りに行く）
+  const urlSaysChii = !!um && um[1].toLowerCase() === TT_ACCOUNT;
+  let o = null;
+  try { o = await ttOembed(vid); } catch { o = null; }
+  if (o && o.status === 404) return { error: "動画が見つかりませんでした。URLを確認してね。" };
+  if (o && o.ok && o.info) {
+    const info = o.info;
+    const author = String(info.author_unique_id || "").toLowerCase()
+      || String(info.author_url || "").split("@")[1]?.toLowerCase() || "";
+    if (author && author !== TT_ACCOUNT) return { error: `@${TT_ACCOUNT} の動画だけ投稿できます。` };
+    if (!author && !urlSaysChii) return { error: `@${TT_ACCOUNT} の動画か確認できませんでした。TikTokの「リンクをコピー」で出たURLをそのまま貼ってね。` };
+    return { vid, title: String(info.title || "").slice(0, 200) };
+  }
+  if (urlSaysChii) return { vid, title: "" };
+  return { error: "いまTikTokで動画を確認できませんでした。少し待ってからもう一度どうぞ。" };
 }
 
 async function ttPost({ request, env }) {
