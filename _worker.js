@@ -211,7 +211,7 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const c = { request, env, ctx };
-    let previewing = false;
+    let previewing = false, linkBot = false;
     try {
       if (url.pathname === "/api/posts") {
         if (request.method === "GET") return await postsGet(c);
@@ -225,8 +225,12 @@ export default {
         const list = await projectStates(env);
         const p = list.find((x) => x.page === pageName);
         if (p && !p.open) {
-          if (!(await isPreviewer(request, env))) return Response.redirect(new URL("/", url).toString(), 302);
-          previewing = true;
+          // Xなどのリンク読み取り役（ボット）には、公開前でもページの画像・タイトルだけは見せる
+          const ua = request.headers.get("User-Agent") || "";
+          const isLinkBot = /Twitterbot|facebookexternalhit|Discordbot|Slackbot|LinkedInBot|Line\/|Pinterest|TelegramBot|WhatsApp|Applebot|Embedly|redditbot/i.test(ua);
+          if (isLinkBot) { linkBot = true; }
+          else if (!(await isPreviewer(request, env))) return Response.redirect(new URL("/", url).toString(), 302);
+          else previewing = true;
         }
       }
       if (url.pathname === "/api/letters") {
