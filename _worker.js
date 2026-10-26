@@ -1,0 +1,122 @@
+// ちぃちゃんの好きなところ：投稿の保存・読み込み・管理
+// 必要な設定: D1データベースを「DB」という名前でつなぐ / シークレット ADMIN_KEY
+
+const MAX_LEN = 60;
+const LIST_LIMIT = 500;
+const WAIT_SEC = 15;        // 同じ人が続けて投稿できるまでの秒数
+const PER_HOUR = 30;        // 同じ人が1時間に投稿できる数
+const DEFAULT_NG = ["http", "https", "www.", ".com", ".jp", "死ね", "しね", "殺す", "ころす", "きもい", "キモい", "うざい", "ブス"];
+
+const json = (body, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+  });
+
+async function sha(s) {
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+async function postsGet({ request, env }) {
+  const url = new URL(request.url);
+  const v = Number(url.searchParams.get("v") ?? -1);
+  const row = await env.DB.prepare("SELECT v FROM meta WHERE k='ver'").first();
+  const ver = row ? row.v : 0;
+  // 変化がなければ中身を送らない（無料枠の節約）
+  if (v === ver) return json({ ver, same: true });
+  const { results } = await env.DB
+    .prepare("SELECT id, text, at FROM posts WHERE hidden=0 ORDER BY id DESC LIMIT ?")
+    .bind(LIST_LIMIT)
+    .all();
+  return json({ ver, posts: results });
+}
+
+async function postsPost({ request, env }) {
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "送れませんでした。" }, 400); }
+  const text = String(body?.text ?? "").normalize("NFKC").replace(/\s+/g, " ").trim();
+  if (!text) return json({ error: "好きなところを書いてね。" }, 400);
+  if ([...text].length > MAX_LEN) return json({ error: `${MAX_LEN}文字までで書いてね。` }, 400);
+
+  const extra = (env.NG_WORDS || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const lower = text.toLowerCase();
+  if ([...DEFAULT_NG, ...extra].some((w) => lower.includes(w.toLowerCase())))
+    return json({ error: "その言葉は投稿できません。" }, 400);
+
+  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+  const iph = await sha(ip + (env.ADMIN_KEY || "salt"));
+  const now = Date.now();
+  const recent = await env.DB
+    .prepare("SELECT SUM(at > ?) AS short, COUNT(*) AS hour FROM posts WHERE iph=? AND at > ?")
+    .bind(now - WAIT_SEC * 1000, iph, now - 3600 * 1000)
+    .first();
+  if (recent && recent.short > 0) return json({ error: "ちょっと待ってからもう一度どうぞ。" }, 429);
+  if (recent && recent.hour >= PER_HOUR) return json({ error: "たくさん投稿してくれてありがとう！ 少し時間をあけてね。" }, 429);
+
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO posts (text, at, iph) VALUES (?, ?, ?)").bind(text, now, iph),
+    env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='ver'"),
+  ]);
+  return json({ ok: true });
+}
+
+function same(a, b) {
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return d === 0;
+}
+
+async function adminPost({ request, env }) {
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
+  if (!env.ADMIN_KEY) return json({ error: "管理用の合言葉（ADMIN_KEY）がまだ設定されていません。" }, 500);
+  if (!same(String(body?.key ?? ""), env.ADMIN_KEY)) {
+    await new Promise((r) => setTimeout(r, 800));
+    return json({ error: "合言葉がちがいます。" }, 401);
+  }
+  const id = Number(body.id);
+  const bump = env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='ver'");
+  switch (body.action) {
+    case "list": {
+      const { results } = await env.DB
+        .prepare("SELECT id, text, at, hidden FROM posts ORDER BY id DESC LIMIT 1000").all();
+      return json({ posts: results });
+    }
+    case "hide":
+    case "show":
+      await env.DB.batch([
+        env.DB.prepare("UPDATE posts SET hidden=? WHERE id=?").bind(body.action === "hide" ? 1 : 0, id),
+        bump,
+      ]);
+      return json({ ok: true });
+    case "delete":
+      await env.DB.batch([env.DB.prepare("DELETE FROM posts WHERE id=?").bind(id), bump]);
+      return json({ ok: true });
+    default:
+      return json({ error: "unknown action" }, 400);
+  }
+}
+
+// サイト全体の入口：/api/ は上の処理へ、それ以外はページ（index.html など）を返す
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    const c = { request, env, ctx };
+    try {
+      if (url.pathname === "/api/posts") {
+        if (request.method === "GET") return await postsGet(c);
+        if (request.method === "POST") return await postsPost(c);
+        return json({ error: "method not allowed" }, 405);
+      }
+      if (url.pathname === "/api/admin") {
+        if (request.method === "POST") return await adminPost(c);
+        return json({ error: "method not allowed" }, 405);
+      }
+    } catch (e) {
+      return json({ error: "サーバーでエラーが起きました。設定（DB のつなぎ方）を確認してください。" }, 500);
+    }
+    return env.ASSETS.fetch(request);
+  },
+};
