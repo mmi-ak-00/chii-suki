@@ -97,7 +97,9 @@ button.go:disabled{opacity:.5;cursor:default}
 .say[aria-expanded="true"]{border-color:var(--accent);color:var(--accent)}
 .say:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
 .no .acts{margin-left:auto;display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.addc{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;background:var(--bg);border-radius:16px;padding:10px}
+.slot{grid-column:1/-1;display:flex;flex-direction:column;gap:10px}
+.slot:empty{display:none}
+.addc{display:flex;gap:8px;flex-wrap:wrap;background:var(--bg);border-radius:16px;padding:10px}
 .addc input{flex:1 1 180px;min-width:0;font:inherit;font-size:16px;color:var(--fg);background:var(--surface);border:2px solid var(--line);border-radius:999px;padding:8px 14px;outline:none}
 .addc input:focus{border-color:var(--accent)}
 .addc button{font-family:var(--display);font-weight:800;font-size:14px;border:0;border-radius:999px;padding:8px 18px;background:var(--accent);color:var(--accent-ink);cursor:pointer}
@@ -127,7 +129,7 @@ button.go:disabled{opacity:.5;cursor:default}
 .more{align-self:flex-start;font:inherit;font-size:13px;font-weight:700;color:var(--accent);background:none;border:0;padding:0;cursor:pointer}
 .links{display:flex;gap:12px;flex-wrap:wrap;font-size:13px}
 .links a{color:var(--muted)}
-.player{grid-column:1/-1;display:flex;justify-content:center}
+.player{display:flex;justify-content:center}
 .player iframe{width:100%;max-width:340px;aspect-ratio:9/16;border:0;border-radius:16px;background:#000}
 .empty{background:var(--surface);border:2px dashed var(--line);border-radius:24px;padding:28px 18px;text-align:center;color:var(--muted);font-family:var(--display)}
 .status{font-size:13px;color:var(--muted);margin:0}
@@ -217,99 +219,136 @@ function setCat(c){
 }
 $("tabs").addEventListener("click",e=>{const b=e.target.closest("[data-cat]"); if(b) setCat(b.dataset.cat);});
 
+// カードは動画ごとに作りおきして、変わったところだけ書き換える
+// （サムネイル用プレーヤーや再生中の動画を作り直すと、読み込み直しで一瞬消えてしまうため）
+const cardCache=new Map();
+function getCard(key){
+  let c=cardCache.get(key);
+  if(c) return c;
+  c={key};
+  c.li=document.createElement("li");
+  c.no=document.createElement("div"); c.no.className="no";
+  c.th=document.createElement("button"); c.th.className="thumb"; c.th.type="button"; c.th.setAttribute("aria-label","動画を再生");
+  c.body=document.createElement("div"); c.body.className="body";
+  c.saySlot=document.createElement("div"); c.saySlot.className="slot";
+  c.playerSlot=document.createElement("div"); c.playerSlot.className="slot";
+  c.li.append(c.no,c.th,c.body,c.saySlot,c.playerSlot);
+  cardCache.set(key,c);
+  return c;
+}
+function fillThumb(c,v){
+  if(c.th.dataset.ready) return;
+  c.th.dataset.ready="1";
+  if(demo){ const s=document.createElement("span"); s.className="smp"; s.textContent="SAMPLE"; c.th.append(s); }
+  else{
+    // TikTokの埋め込みプレーヤーを小さく置いて、動画の最初の場面をサムネイル代わりに見せる
+    const pv=document.createElement("iframe");
+    pv.className="pv"; pv.loading="lazy"; pv.tabIndex=-1; pv.setAttribute("aria-hidden","true"); pv.title="";
+    pv.src=`https://www.tiktok.com/player/v1/${v.vid}?controls=0&progress_bar=0&play_button=0&volume_control=0&fullscreen_button=0&timestamp=0&autoplay=0&loop=0&music_info=0&description=0&rel=0&native_context_menu=0&closed_caption=0`;
+    c.th.append(pv);
+  }
+  const pl=document.createElement("span"); pl.className="play"; c.th.append(pl);
+  c.th.onclick=()=>{ if(demo) return; const vid=c.v.vid; openPlayer.has(vid)?openPlayer.delete(vid):openPlayer.add(vid); render(); };
+}
 function render(){
   const list=(data&&data[cat])||[];
   const total=list.reduce((a,x)=>a+x.n,0);
   $("rmeta").textContent=list.length?`${list.length}本・のべ${total}推し`:"";
+  const rank=$("rank");
   if(!list.length){
-    $("rank").replaceChildren(Object.assign(document.createElement("li"),{className:"empty",textContent:`まだ「${CATS[cat]}」の推し動画はありません。最初の1本を送ってね！`}));
+    rank.replaceChildren(Object.assign(document.createElement("li"),{className:"empty",textContent:`まだ「${CATS[cat]}」の推し動画はありません。最初の1本を送ってね！`}));
     return;
   }
   let prevN=null, place=0;
-  $("rank").replaceChildren(...list.map((v,i)=>{
+  const order=list.map((v,i)=>{
     if(v.n!==prevN){ place=i+1; prevN=v.n; }
-    const li=document.createElement("li");
-    li.className="card"+(place<=3?" top"+place:"");
-    const no=document.createElement("div"); no.className="no";
+    const key=cat+":"+v.vid;
+    const c=getCard(key); c.v=v;
+    c.li.className="card"+(place<=3?" top"+place:"");
+    fillThumb(c,v);
+
+    // 上の段（順位・推し数・いいね・ひとこと）
     const md=document.createElement("span"); md.className="medal"; md.textContent=place+"位";
     const os=document.createElement("span"); os.className="oshi"; os.innerHTML=`<b>${v.n}</b> 人が推してます`;
     const lb=document.createElement("button"); lb.type="button"; lb.className="like"+(justLiked===cat+v.vid?" pop":"");
     lb.setAttribute("aria-pressed", !!v.liked);
     lb.setAttribute("aria-label", v.liked?"いいねを取り消す":"いいねで推す");
     lb.innerHTML=`<span class="h">${v.liked?"♥":"♡"}</span><span>${v.likes||0}</span>`;
-    lb.onclick=()=>toggleLike(v,lb);
-    const key=cat+":"+v.vid;
+    lb.onclick=()=>toggleLike(c.v,lb);
     const sb=document.createElement("button"); sb.type="button"; sb.className="say";
     sb.setAttribute("aria-expanded", openSay.has(key));
     sb.innerHTML='<span aria-hidden="true">💬</span><span>ひとこと</span>';
-    sb.onclick=()=>{ openSay.has(key)?openSay.delete(key):openSay.add(key); render(); if(openSay.has(key)) setTimeout(()=>document.getElementById("say-"+v.vid)?.focus(),0); };
+    sb.onclick=()=>{ openSay.has(key)?openSay.delete(key):openSay.add(key); render(); if(openSay.has(key)) setTimeout(()=>document.getElementById("say-"+c.v.vid)?.focus(),0); };
     const acts=document.createElement("span"); acts.className="acts"; acts.append(lb,sb);
-    no.append(md,os,acts);
+    c.no.replaceChildren(md,os,acts);
 
-    const th=document.createElement("button"); th.className="thumb"; th.type="button";
-    th.setAttribute("aria-label","動画を再生");
-    if(demo){ const s=document.createElement("span"); s.className="smp"; s.textContent="SAMPLE"; th.append(s); }
-    else{
-      // TikTokの埋め込みプレーヤーを小さく置いて、動画の最初の場面をサムネイル代わりに見せる
-      const pv=document.createElement("iframe");
-      pv.className="pv"; pv.loading="lazy"; pv.tabIndex=-1; pv.setAttribute("aria-hidden","true"); pv.title="";
-      pv.src=`https://www.tiktok.com/player/v1/${v.vid}?controls=0&progress_bar=0&play_button=0&volume_control=0&fullscreen_button=0&timestamp=0&autoplay=0&loop=0&music_info=0&description=0&rel=0&native_context_menu=0&closed_caption=0`;
-      th.append(pv);
-    }
-    const pl=document.createElement("span"); pl.className="play"; th.append(pl);
-    th.onclick=()=>{ if(demo) return; openPlayer.has(v.vid)?openPlayer.delete(v.vid):openPlayer.add(v.vid); render(); };
-
-    const body=document.createElement("div"); body.className="body";
-    if(v.title){ const cap=document.createElement("p"); cap.className="cap"; cap.textContent=v.title; body.append(cap); }
+    // 右側（キャプション・みんなのひとこと・TikTokで開く）
+    const parts=[];
+    if(v.title){ const cap=document.createElement("p"); cap.className="cap"; cap.textContent=v.title; parts.push(cap); }
     if(v.comments.length){
       const ul=document.createElement("ul"); ul.className="voices";
       const showAll=openMore.has(v.vid);
-      for(const c of (showAll?v.comments:v.comments.slice(0,3))){ const x=document.createElement("li"); x.textContent=c.text; ul.append(x); }
-      body.append(ul);
+      for(const cm of (showAll?v.comments:v.comments.slice(0,3))){ const x=document.createElement("li"); x.textContent=cm.text; ul.append(x); }
+      parts.push(ul);
       if(v.comments.length>3){
         const m=document.createElement("button"); m.className="more"; m.type="button";
         m.textContent=showAll?"とじる":`ひとことをもっと見る（${v.comments.length}件）`;
-        m.onclick=()=>{ showAll?openMore.delete(v.vid):openMore.add(v.vid); render(); };
-        body.append(m);
+        m.onclick=()=>{ openMore.has(c.v.vid)?openMore.delete(c.v.vid):openMore.add(c.v.vid); render(); };
+        parts.push(m);
       }
     }
     if(!demo){
       const ln=document.createElement("div"); ln.className="links";
       const a=document.createElement("a"); a.href=`https://www.tiktok.com/@chii_nyan02/video/${v.vid}`; a.target="_blank"; a.rel="noopener"; a.textContent="TikTokで開く ↗";
-      ln.append(a); body.append(ln);
+      ln.append(a); parts.push(ln);
     }
-    li.append(no,th,body);
+    c.body.replaceChildren(...parts);
+
+    // ひとこと入力欄（開いている間は作り直さない）
     if(openSay.has(key)){
-      const f=document.createElement("form"); f.className="addc"; f.autocomplete="off";
-      const inp=document.createElement("input"); inp.id="say-"+v.vid; inp.maxLength=60; inp.placeholder="この動画へのひとこと";
-      inp.setAttribute("aria-label","この動画へのひとこと"); inp.value=sayDraft[key]||"";
-      inp.oninput=()=>{ sayDraft[key]=inp.value; };
-      const b=document.createElement("button"); b.type="submit"; b.textContent="送る";
-      const m=document.createElement("p"); m.className="msg"; m.textContent=sayMsg[key]||"60文字まで。送ると、この動画を推したことにもなります。";
-      f.onsubmit=async e=>{
-        e.preventDefault();
-        const text=inp.value.trim(); if(!text) return;
-        b.disabled=true; m.textContent="送っています…";
-        if(demo){ v.comments.unshift({text}); openMore.add(v.vid); sayDraft[key]=""; sayMsg[key]="プレビューなので保存はされません。"; render(); return; }
-        try{
-          const r=await fetch("/api/tiktok/comment",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({cat,vid:v.vid,comment:text})});
-          const d=await r.json().catch(()=>({}));
-          if(!r.ok){ sayMsg[key]=d.error||"送れませんでした。"; m.textContent=sayMsg[key]; b.disabled=false; return; }
-          sayDraft[key]=""; sayMsg[key]="ひとことを送りました！"; openMore.add(v.vid);
-          await load();
-        }catch(err){ m.textContent="送れませんでした。通信を確認してもう一度どうぞ。"; b.disabled=false; }
-      };
-      f.append(inp,b,m); li.append(f);
-    }
+      if(!c.saySlot.firstChild) c.saySlot.append(makeSayForm(c,key));
+      const msg=c.saySlot.querySelector(".msg"); if(msg && sayMsg[key]) msg.textContent=sayMsg[key];
+    } else c.saySlot.replaceChildren();
+
+    // 大きいプレーヤー（再生中は作り直さない）
     if(openPlayer.has(v.vid)){
-      const p=document.createElement("div"); p.className="player";
-      const f=document.createElement("iframe");
-      f.src=`https://www.tiktok.com/player/v1/${v.vid}?autoplay=1&rel=0`;
-      f.allow="autoplay; fullscreen; encrypted-media; picture-in-picture"; f.title="TikTok動画";
-      p.append(f); li.append(p);
-    }
-    return li;
-  }));
+      if(!c.playerSlot.firstChild){
+        const p=document.createElement("div"); p.className="player";
+        const f=document.createElement("iframe");
+        f.src=`https://www.tiktok.com/player/v1/${v.vid}?autoplay=1&rel=0`;
+        f.allow="autoplay; fullscreen; encrypted-media; picture-in-picture"; f.title="TikTok動画";
+        p.append(f); c.playerSlot.append(p);
+      }
+    } else c.playerSlot.replaceChildren();
+    return c.li;
+  });
+  // 並び順が変わったときだけ並べ直す
+  const cur=[...rank.children];
+  if(cur.length!==order.length || cur.some((el,i)=>el!==order[i])) rank.replaceChildren(...order);
+}
+function makeSayForm(c,key){
+  const f=document.createElement("form"); f.className="addc"; f.autocomplete="off";
+  const inp=document.createElement("input"); inp.id="say-"+c.v.vid; inp.maxLength=60; inp.placeholder="この動画へのひとこと";
+  inp.setAttribute("aria-label","この動画へのひとこと"); inp.value=sayDraft[key]||"";
+  inp.oninput=()=>{ sayDraft[key]=inp.value; };
+  const b=document.createElement("button"); b.type="submit"; b.textContent="送る";
+  const m=document.createElement("p"); m.className="msg"; m.textContent=sayMsg[key]||"60文字まで。送ると、この動画を推したことにもなります。";
+  f.onsubmit=async e=>{
+    e.preventDefault();
+    const text=inp.value.trim(); if(!text) return;
+    b.disabled=true; m.textContent="送っています…";
+    if(demo){ c.v.comments.unshift({text}); openMore.add(c.v.vid); inp.value=""; sayDraft[key]=""; sayMsg[key]="プレビューなので保存はされません。"; b.disabled=false; render(); return; }
+    try{
+      const r=await fetch("/api/tiktok/comment",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({cat,vid:c.v.vid,comment:text})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok){ sayMsg[key]=d.error||"送れませんでした。"; m.textContent=sayMsg[key]; return; }
+      inp.value=""; sayDraft[key]=""; sayMsg[key]="ひとことを送りました！"; m.textContent=sayMsg[key]; openMore.add(c.v.vid);
+      await load();
+    }catch(err){ m.textContent="送れませんでした。通信を確認してもう一度どうぞ。"; }
+    finally{ b.disabled=false; }
+  };
+  f.append(inp,b,m);
+  return f;
 }
 
 
