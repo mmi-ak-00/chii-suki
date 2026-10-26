@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ちぃちゃんの推しTikTok</title>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ちぃむみーてぃんぐ2026">
+<meta property="og:title" content="ちぃちゃんの推しTikTok｜ちぃむみーてぃんぐ2026">
+<meta property="og:description" content="ちぃむみーてぃんぐ2026 企画③ お気に入りのTikTokを教えて🎬">
+<meta property="og:image" content="/ogp-kikaku3.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="/ogp-kikaku3.png">
+<meta name="description" content="ちぃちゃん生誕企画「ちぃむみーてぃんぐ2026」企画③ 推しTikTokランキング">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
+<style>
+/* Layout: 戻るリンク → 見出し → お題タブ → 推すフォーム → お題ごとのランキング（動画カードの縦並び） */
+:root{
+  --bg:#fff7f9; --surface:#ffffff; --fg:#3b2a33; --muted:#8a7480; --line:#f1d9e2;
+  --accent:#e8517f; --accent-ink:#ffffff;
+  --w1:#e8517f; --w2:#f08a3c; --w3:#3aa58a; --w4:#5b7fe0; --w5:#a35fd1;
+  --gold:#d9a21b; --silver:#9aa3ad; --bronze:#c27a45;
+  --display:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",system-ui,sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1f1519; --surface:#2a1d23; --fg:#f6e9ee; --muted:#b59aa6; --line:#43303a;
+  --accent:#ff7aa2; --accent-ink:#2a0f19;
+  --w1:#ff7aa2; --w2:#ffab6b; --w3:#5fd1b0; --w4:#8fa9ff; --w5:#cf96f5;
+  --gold:#f0c24a; --silver:#c3cad2; --bronze:#e19a66; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1f1519; --surface:#2a1d23; --fg:#f6e9ee; --muted:#b59aa6; --line:#43303a;
+  --accent:#ff7aa2; --accent-ink:#2a0f19;
+  --w1:#ff7aa2; --w2:#ffab6b; --w3:#5fd1b0; --w4:#8fa9ff; --w5:#cf96f5;
+  --gold:#f0c24a; --silver:#c3cad2; --bronze:#e19a66; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.back{font-family:var(--display);font-weight:800;font-size:14px;color:var(--accent);text-decoration:none;align-self:flex-start}
+.back:hover,.back:focus-visible{text-decoration:underline}
+.demo{background:var(--line);border-radius:14px;padding:8px 14px;font-size:13px;margin:0}
+header{display:flex;flex-direction:column;gap:6px}
+.eyebrow{font-family:var(--display);font-weight:800;font-size:13px;letter-spacing:.12em;color:var(--accent);margin:0}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(26px,6.5vw,36px);line-height:1.25;margin:0;text-wrap:balance}
+h1 span{color:var(--accent)}
+.lead{margin:0;color:var(--muted)}
+.acct{font-family:var(--display);font-weight:800;color:var(--fg)}
+
+/* お題タブ */
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:var(--surface);border:2px solid var(--line);border-radius:999px;padding:5px}
+.tabs button{font-family:var(--display);font-weight:800;font-size:15px;border:0;border-radius:999px;padding:10px 6px;background:transparent;color:var(--muted);cursor:pointer;min-width:0}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.tabs button:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
+@media (max-width:380px){.tabs button{font-size:13px}}
+
+/* 推すフォーム */
+.push{background:var(--surface);border:2px solid var(--line);border-radius:28px;padding:20px 18px;display:flex;flex-direction:column;gap:14px}
+.push h2{font-family:var(--display);font-weight:800;font-size:18px;margin:0}
+.push h2 b{color:var(--accent)}
+.field{position:relative;margin-top:10px}
+.field label{position:absolute;top:-11px;left:14px;padding:0 8px;background:var(--surface);font-family:var(--display);font-weight:800;font-size:14px;line-height:22px;color:var(--accent);display:flex;align-items:center;gap:6px}
+.field label .opt{font-family:var(--body);font-weight:700;font-size:11px;line-height:1;color:var(--accent-ink);background:var(--accent);border-radius:999px;padding:3px 8px}
+.field input{display:block;width:100%;font:inherit;font-size:16px;color:var(--fg);background:var(--bg);border:2px solid var(--line);border-radius:14px;padding:16px 14px 10px;outline:none}
+.field input:focus{border-color:var(--accent)}
+.how{margin:0;font-size:13px;color:var(--muted)}
+.howbox{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.open-tt{display:inline-flex;align-items:center;gap:6px;font-family:var(--display);font-weight:800;font-size:15px;text-decoration:none;color:var(--fg);background:var(--bg);border:2px solid var(--fg);border-radius:999px;padding:8px 18px}
+.open-tt:hover,.open-tt:focus-visible{background:var(--fg);color:var(--bg);outline:none}
+.how b{color:var(--fg)}
+.prow{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.hint{font-size:13px;color:var(--muted);margin:0;min-height:1.4em}
+.hint.ok{color:var(--w3)}
+button.go{font-family:var(--display);font-weight:800;font-size:16px;border:0;border-radius:999px;padding:12px 26px;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+button.go:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
+button.go:disabled{opacity:.5;cursor:default}
+
+/* ランキング */
+.bar{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.bar h2{font-family:var(--display);font-weight:800;font-size:20px;margin:0}
+.bar .meta{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--surface);border:2px solid var(--line);border-radius:24px;padding:14px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:start}
+.card.top1{border-color:var(--gold)}
+.no{grid-column:1/-1;display:flex;align-items:center;gap:10px}
+.medal{font-family:var(--display);font-weight:800;font-size:15px;min-width:44px;height:30px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;padding:0 10px;background:var(--line);color:var(--fg);font-variant-numeric:tabular-nums}
+.top1 .medal{background:var(--gold);color:#fff}
+.top2 .medal{background:var(--silver);color:#fff}
+.top3 .medal{background:var(--bronze);color:#fff}
+.oshi{font-family:var(--display);font-weight:800;font-size:15px}
+.oshi b{color:var(--accent);font-size:20px;font-variant-numeric:tabular-nums}
+.say{display:inline-flex;align-items:center;gap:5px;font-family:var(--display);font-weight:800;font-size:14px;border:2px solid var(--line);color:var(--fg);background:var(--surface);border-radius:999px;padding:5px 12px;cursor:pointer}
+.say[aria-expanded="true"]{border-color:var(--accent);color:var(--accent)}
+.say:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
+.no .acts{margin-left:auto;display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.addc{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;background:var(--bg);border-radius:16px;padding:10px}
+.addc input{flex:1 1 180px;min-width:0;font:inherit;font-size:16px;color:var(--fg);background:var(--surface);border:2px solid var(--line);border-radius:999px;padding:8px 14px;outline:none}
+.addc input:focus{border-color:var(--accent)}
+.addc button{font-family:var(--display);font-weight:800;font-size:14px;border:0;border-radius:999px;padding:8px 18px;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+.addc button:disabled{opacity:.5}
+.addc .msg{flex-basis:100%;margin:0;font-size:12px;color:var(--muted);min-height:1.2em}
+.like{display:inline-flex;align-items:center;gap:6px;font-family:var(--display);font-weight:800;font-size:14px;border:2px solid var(--accent);color:var(--accent);background:transparent;border-radius:999px;padding:5px 14px;cursor:pointer;font-variant-numeric:tabular-nums}
+.like .h{font-size:16px;line-height:1}
+.like[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.like:disabled{opacity:.6;cursor:default}
+.like:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
+.like.pop{animation:pop .45s ease}
+@keyframes pop{0%{transform:scale(.85)}60%{transform:scale(1.12)}100%{transform:scale(1)}}
+.no{flex-wrap:wrap}
+.thumb{position:relative;width:120px;aspect-ratio:9/16;max-width:100%;border-radius:16px;overflow:hidden;background:linear-gradient(160deg,var(--w1),var(--w5));border:0;padding:0;cursor:pointer;display:block}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .play{position:absolute;inset:auto 8px 8px auto;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center}
+.thumb .play::before{content:"";margin-left:3px;border-left:12px solid #fff;border-top:8px solid transparent;border-bottom:8px solid transparent}
+.thumb .smp{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--display);font-weight:800;font-size:13px;letter-spacing:.1em}
+.thumb:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
+.body{min-width:0;display:flex;flex-direction:column;gap:8px}
+.cap{margin:0;font-size:14px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.cap.none{color:var(--muted)}
+.voices{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.voices li{background:var(--bg);border-radius:14px 14px 14px 4px;padding:6px 12px;font-size:14px;overflow-wrap:anywhere}
+.more{align-self:flex-start;font:inherit;font-size:13px;font-weight:700;color:var(--accent);background:none;border:0;padding:0;cursor:pointer}
+.links{display:flex;gap:12px;flex-wrap:wrap;font-size:13px}
+.links a{color:var(--muted)}
+.player{grid-column:1/-1;display:flex;justify-content:center}
+.player iframe{width:100%;max-width:340px;aspect-ratio:9/16;border:0;border-radius:16px;background:#000}
+.empty{background:var(--surface);border:2px dashed var(--line);border-radius:24px;padding:28px 18px;text-align:center;color:var(--muted);font-family:var(--display)}
+.status{font-size:13px;color:var(--muted);margin:0}
+footer{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
+@media (max-width:420px){.thumb{width:96px}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}.like.pop{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">← ちぃむみーてぃんぐ2026 トップへ</a>
+  <p class="demo" id="demo" hidden>プレビュー表示中です。並んでいるのはサンプルです（実際の動画ではありません）。</p>
+
+  <header>
+    <p class="eyebrow">企画③</p>
+    <h1><span>ちぃちゃん</span>の推しTikTok</h1>
+    <p class="lead">あなたのお気に入りの <span class="acct">@chii_nyan02</span> の動画を、お題ごとに推してね。ランキングの動画に「♡」を押すだけでも推せます。推した人が多い動画ほど、上に上がります。</p>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="お題" id="tabs">
+    <button role="tab" data-cat="vlog" aria-selected="true" id="tab-vlog">Vlog系</button>
+    <button role="tab" data-cat="dance" aria-selected="false" id="tab-dance">踊ってみた系</button>
+    <button role="tab" data-cat="close" aria-selected="false" id="tab-close">寄り動画系</button>
+  </div>
+
+  <section class="push" aria-labelledby="pushTitle">
+    <h2 id="pushTitle"><b id="catName">Vlog系</b>の推し動画を送る</h2>
+    <form id="pf" autocomplete="off" style="display:flex;flex-direction:column;gap:14px">
+      <div class="howbox">
+        <a class="open-tt" id="openTT" href="https://www.tiktok.com/@chii_nyan02" target="_blank" rel="noopener">ちぃちゃんのTikTokを開く ↗</a>
+        <p class="how">開いた先で動画を選んで「シェア」→「リンクをコピー」し、下に貼り付けてね。<br><b>23歳のちぃちゃんの動画（2025.11.02〜2026.11.01に投稿されたもの）</b>だけ送れます。</p>
+      </div>
+      <div class="field">
+        <label for="pu">TikTokのURL</label>
+        <input id="pu" type="url" inputmode="url" placeholder="https://vt.tiktok.com/…" required>
+      </div>
+      <div class="field">
+        <label for="pc">ひとこと<span class="opt">なくてもOK</span></label>
+        <input id="pc" maxlength="60" placeholder="例：最後のウインクがかわいすぎる">
+      </div>
+      <div class="prow">
+        <p class="hint" id="ph"></p>
+        <button class="go" id="pgo" type="submit">推す！</button>
+      </div>
+    </form>
+  </section>
+
+  <section aria-labelledby="rankTitle" style="display:flex;flex-direction:column;gap:12px">
+    <div class="bar"><h2 id="rankTitle">Vlog系 ランキング</h2><span class="meta" id="rmeta"></span></div>
+    <ol class="rank" id="rank"></ol>
+    <p class="status" id="status">読み込み中…</p>
+  </section>
+
+  <footer>※ファンによる非公式サイトです</footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const CATS={vlog:"Vlog系",dance:"踊ってみた系",close:"寄り動画系"};
+let cat="vlog", data=null, ver=-1, demo=false, sending=false, timer=null;
+const openPlayer=new Set(), openMore=new Set(), openSay=new Set();
+const sayDraft={}, sayMsg={};
+let pendingRender=false;
+document.addEventListener("focusout",e=>{ if(pendingRender && e.target.closest && e.target.closest(".addc")){ setTimeout(()=>{ if(!(document.activeElement&&document.activeElement.closest&&document.activeElement.closest(".addc"))){ pendingRender=false; render(); } },0); } });
+let justLiked="";
+
+const SAMPLE={
+  vlog:[
+    {vid:"s1",title:"（サンプル）カフェでまったりVlog",n:12,likes:8,liked:false,comments:[{text:"ゆるい空気感が好き"},{text:"最後の一言に笑った"},{text:"声に癒される"}]},
+    {vid:"s2",title:"（サンプル）1日密着Vlog",n:7,likes:5,liked:true,comments:[{text:"準備してる姿が新鮮"}]},
+    {vid:"s3",title:"（サンプル）お気に入りの購入品紹介",n:3,likes:2,liked:false,comments:[]},
+  ],
+  dance:[{vid:"s4",title:"（サンプル）踊ってみた",n:9,likes:6,liked:false,comments:[{text:"キレがすごい"},{text:"表情管理が完璧"}]}],
+  close:[],
+};
+
+function pickInitialCat(){
+  const h=(location.hash||"").replace("#","");
+  if(CATS[h]) cat=h;
+}
+function setCat(c){
+  cat=c;
+  for(const b of $("tabs").querySelectorAll("[data-cat]")) b.setAttribute("aria-selected", b.dataset.cat===c);
+  $("catName").textContent=CATS[c];
+  $("rankTitle").textContent=CATS[c]+" ランキング";
+  try{ history.replaceState(null,"","#"+c); }catch(e){}
+  render();
+}
+$("tabs").addEventListener("click",e=>{const b=e.target.closest("[data-cat]"); if(b) setCat(b.dataset.cat);});
+
+function render(){
+  const list=(data&&data[cat])||[];
+  const total=list.reduce((a,x)=>a+x.n,0);
+  $("rmeta").textContent=list.length?`${list.length}本・のべ${total}推し`:"";
+  if(!list.length){
+    $("rank").replaceChildren(Object.assign(document.createElement("li"),{className:"empty",textContent:`まだ「${CATS[cat]}」の推し動画はありません。最初の1本を送ってね！`}));
+    return;
+  }
+  let prevN=null, place=0;
+  $("rank").replaceChildren(...list.map((v,i)=>{
+    if(v.n!==prevN){ place=i+1; prevN=v.n; }
+    const li=document.createElement("li");
+    li.className="card"+(place<=3?" top"+place:"");
+    const no=document.createElement("div"); no.className="no";
+    const md=document.createElement("span"); md.className="medal"; md.textContent=place+"位";
+    const os=document.createElement("span"); os.className="oshi"; os.innerHTML=`<b>${v.n}</b> 人が推してます`;
+    const lb=document.createElement("button"); lb.type="button"; lb.className="like"+(justLiked===cat+v.vid?" pop":"");
+    lb.setAttribute("aria-pressed", !!v.liked);
+    lb.setAttribute("aria-label", v.liked?"いいねを取り消す":"いいねで推す");
+    lb.innerHTML=`<span class="h">${v.liked?"♥":"♡"}</span><span>${v.likes||0}</span>`;
+    lb.onclick=()=>toggleLike(v,lb);
+    const key=cat+":"+v.vid;
+    const sb=document.createElement("button"); sb.type="button"; sb.className="say";
+    sb.setAttribute("aria-expanded", openSay.has(key));
+    sb.innerHTML='<span aria-hidden="true">💬</span><span>ひとこと</span>';
+    sb.onclick=()=>{ openSay.has(key)?openSay.delete(key):openSay.add(key); render(); if(openSay.has(key)) setTimeout(()=>document.getElementById("say-"+v.vid)?.focus(),0); };
+    const acts=document.createElement("span"); acts.className="acts"; acts.append(lb,sb);
+    no.append(md,os,acts);
+
+    const th=document.createElement("button"); th.className="thumb"; th.type="button";
+    th.setAttribute("aria-label","動画を再生");
+    if(demo){ const s=document.createElement("span"); s.className="smp"; s.textContent="SAMPLE"; th.append(s); }
+    else{ const im=document.createElement("img"); im.loading="lazy"; im.alt=""; im.src="/api/tiktok/thumb?vid="+v.vid; im.onerror=()=>im.remove(); th.append(im); }
+    const pl=document.createElement("span"); pl.className="play"; th.append(pl);
+    th.onclick=()=>{ if(demo) return; openPlayer.has(v.vid)?openPlayer.delete(v.vid):openPlayer.add(v.vid); render(); };
+
+    const body=document.createElement("div"); body.className="body";
+    const cap=document.createElement("p"); cap.className="cap"+(v.title?"":" none"); cap.textContent=v.title||"（キャプションなし）";
+    body.append(cap);
+    if(v.comments.length){
+      const ul=document.createElement("ul"); ul.className="voices";
+      const showAll=openMore.has(v.vid);
+      for(const c of (showAll?v.comments:v.comments.slice(0,3))){ const x=document.createElement("li"); x.textContent=c.text; ul.append(x); }
+      body.append(ul);
+      if(v.comments.length>3){
+        const m=document.createElement("button"); m.className="more"; m.type="button";
+        m.textContent=showAll?"とじる":`ひとことをもっと見る（${v.comments.length}件）`;
+        m.onclick=()=>{ showAll?openMore.delete(v.vid):openMore.add(v.vid); render(); };
+        body.append(m);
+      }
+    }
+    if(!demo){
+      const ln=document.createElement("div"); ln.className="links";
+      const a=document.createElement("a"); a.href=`https://www.tiktok.com/@chii_nyan02/video/${v.vid}`; a.target="_blank"; a.rel="noopener"; a.textContent="TikTokで開く ↗";
+      ln.append(a); body.append(ln);
+    }
+    li.append(no,th,body);
+    if(openSay.has(key)){
+      const f=document.createElement("form"); f.className="addc"; f.autocomplete="off";
+      const inp=document.createElement("input"); inp.id="say-"+v.vid; inp.maxLength=60; inp.placeholder="この動画へのひとこと";
+      inp.setAttribute("aria-label","この動画へのひとこと"); inp.value=sayDraft[key]||"";
+      inp.oninput=()=>{ sayDraft[key]=inp.value; };
+      const b=document.createElement("button"); b.type="submit"; b.textContent="送る";
+      const m=document.createElement("p"); m.className="msg"; m.textContent=sayMsg[key]||"60文字まで。送ると、この動画を推したことにもなります。";
+      f.onsubmit=async e=>{
+        e.preventDefault();
+        const text=inp.value.trim(); if(!text) return;
+        b.disabled=true; m.textContent="送っています…";
+        if(demo){ v.comments.unshift({text}); openMore.add(v.vid); sayDraft[key]=""; sayMsg[key]="プレビューなので保存はされません。"; render(); return; }
+        try{
+          const r=await fetch("/api/tiktok/comment",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({cat,vid:v.vid,comment:text})});
+          const d=await r.json().catch(()=>({}));
+          if(!r.ok){ sayMsg[key]=d.error||"送れませんでした。"; m.textContent=sayMsg[key]; b.disabled=false; return; }
+          sayDraft[key]=""; sayMsg[key]="ひとことを送りました！"; openMore.add(v.vid);
+          await load();
+        }catch(err){ m.textContent="送れませんでした。通信を確認してもう一度どうぞ。"; b.disabled=false; }
+      };
+      f.append(inp,b,m); li.append(f);
+    }
+    if(openPlayer.has(v.vid)){
+      const p=document.createElement("div"); p.className="player";
+      const f=document.createElement("iframe");
+      f.src=`https://www.tiktok.com/player/v1/${v.vid}?autoplay=1&rel=0`;
+      f.allow="autoplay; fullscreen; encrypted-media; picture-in-picture"; f.title="TikTok動画";
+      p.append(f); li.append(p);
+    }
+    return li;
+  }));
+}
+
+async function toggleLike(v,btn){
+  const on=!v.liked;
+  // 先に見た目を変える（あとでサーバーの結果で上書き）
+  v.liked=on; v.likes=Math.max(0,(v.likes||0)+(on?1:-1)); v.n=Math.max(1,v.n+(on?1:-1));
+  justLiked=on?cat+v.vid:""; render(); justLiked="";
+  if(demo) return;
+  try{
+    const r=await fetch("/api/tiktok/like",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({cat,vid:v.vid,on})});
+    if(!r.ok) throw 0;
+  }catch(e){ $("status").textContent="いいねを送れませんでした。もう一度押してみてね。"; }
+  await load();
+}
+async function load(){
+  try{
+    const r=await fetch("/api/tiktok?v="+ver,{cache:"no-store"});
+    if(!r.ok) throw 0;
+    const d=await r.json();
+    $("status").textContent="リアルタイムで更新中";
+    if(d.same) return;
+    ver=d.ver; data=d.ranking;
+    // ひとことを入力中は画面を書き換えない（入力が途切れないように）
+    if(document.activeElement && document.activeElement.closest && document.activeElement.closest(".addc")) pendingRender=true;
+    else render();
+  }catch(e){
+    if(ver===-1 && !demo){ demo=true; $("demo").hidden=false; data=SAMPLE; $("status").textContent="プレビュー表示（サンプル）"; render(); }
+    else if(!demo){ $("status").textContent="接続が不安定です。自動でつなぎ直しています…"; }
+  }
+}
+function loop(){ clearTimeout(timer); if(demo) return; timer=setTimeout(async()=>{ if(!document.hidden) await load(); loop(); }, 5000); }
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden && !demo){ load(); loop(); } });
+
+$("pf").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const url=$("pu").value.trim(), comment=$("pc").value.trim();
+  if(!url||sending) return;
+  sending=true; $("pgo").disabled=true; $("ph").className="hint"; $("ph").textContent="動画を確認しています…";
+  try{
+    if(demo){ $("ph").textContent="プレビューなので送信はされません。"; return; }
+    const r=await fetch("/api/tiktok",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({url,comment,cat})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){ $("ph").textContent=d.error||"送れませんでした。少し待ってからもう一度どうぞ。"; return; }
+    $("pu").value=""; $("pc").value="";
+    $("ph").className="hint ok"; $("ph").textContent=`「${CATS[cat]}」に推しました！`;
+    await load();
+  }catch(err){ $("ph").textContent="送れませんでした。通信を確認してもう一度どうぞ。"; }
+  finally{ sending=false; $("pgo").disabled=false; }
+});
+
+pickInitialCat(); setCat(cat);
+load().then(loop);
+</script>
+</body>
+</html>

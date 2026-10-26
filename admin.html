@@ -55,6 +55,7 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
     <button role="tab" data-tab="posts" aria-selected="true">ひとこと</button>
     <button role="tab" data-tab="letters" aria-selected="false">メッセージ</button>
     <button role="tab" data-tab="projects" aria-selected="false">企画</button>
+    <button role="tab" data-tab="tiktok" aria-selected="false">TikTok</button>
   </div>
   <section id="lettersView" hidden style="display:flex;flex-direction:column;gap:12px">
     <p class="msg" id="lmsg"></p>
@@ -64,6 +65,11 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
     </div>
     <textarea id="copyout" hidden readonly aria-label="コピー用テキスト"></textarea>
     <ul id="letters"></ul>
+  </section>
+  <section id="tiktokView" hidden style="display:flex;flex-direction:column;gap:12px">
+    <p class="msg" id="tmsg"></p>
+    <div class="filters"><button class="sub" id="treload" type="button">更新</button></div>
+    <ul id="tlist"></ul>
   </section>
   <section id="projectsView" hidden style="display:flex;flex-direction:column;gap:12px">
     <p class="msg" id="pmsg">「公開する」を押した企画だけがトップに表示されます。公開前の企画は「COMING SOON」と番号だけが出ます。「プレビューで見る」から、公開前のページをあなただけ確認できます。</p>
@@ -161,10 +167,11 @@ $("tabs").addEventListener("click",e=>{
   const b=e.target.closest("[data-tab]"); if(!b) return;
   for(const x of $("tabs").querySelectorAll("[data-tab]")) x.setAttribute("aria-selected",x===b);
   const tab=b.dataset.tab;
-  $("lettersView").hidden=tab!=="letters"; $("projectsView").hidden=tab!=="projects";
+  $("lettersView").hidden=tab!=="letters"; $("projectsView").hidden=tab!=="projects"; $("tiktokView").hidden=tab!=="tiktok";
   $("postsView").hidden=tab!=="posts"; $("msg").hidden=tab!=="posts";
   if(tab==="letters") loadLetters();
   if(tab==="projects") loadProjects();
+  if(tab==="tiktok") loadTT();
 });
 const NUM="①②③④⑤⑥⑦⑧⑨⑩";
 async function loadProjects(){
@@ -205,6 +212,31 @@ async function loadProjects(){
     }));
   }catch(e){ $("pmsg").textContent=e.message; }
 }
+let ttItems=[], ttCats={}, pendingT=null;
+async function loadTT(){
+  try{ const d=await call("tiktok_list"); ttItems=d.items; ttCats=d.cats; drawTT(); }
+  catch(e){ $("tmsg").textContent=e.message; }
+}
+function drawTT(){
+  $("tmsg").textContent=ttItems.length?`${ttItems.length}件の推し（新しい順）。「かくす」とランキングから外れます。`:"まだ推しは届いていません。";
+  $("tlist").replaceChildren(...ttItems.map(x=>{
+    const li=document.createElement("li"); if(x.hidden) li.className="hid";
+    const t=document.createElement("span"); t.className="t";
+    const cat=document.createElement("span"); cat.className="tag"; cat.textContent=ttCats[x.cat]||x.cat;
+    const a=document.createElement("a"); a.href=`https://www.tiktok.com/@chii_nyan02/video/${x.vid}`; a.target="_blank"; a.rel="noopener"; a.className="pv"; a.textContent=" 動画 ↗";
+    const c=document.createElement("div"); c.textContent=x.comment||"（ひとことなし）";
+    const cap=document.createElement("div"); cap.className="m"; cap.textContent=x.title||"";
+    t.append(cat,a,c,cap);
+    const m=document.createElement("span"); m.className="m"; m.textContent=new Date(x.at).toLocaleString("ja-JP");
+    const tog=document.createElement("button"); tog.className="sub"; tog.textContent=x.hidden?"もどす":"かくす";
+    tog.onclick=async()=>{ try{ await call(x.hidden?"tiktok_show":"tiktok_hide",x.id); await loadTT(); }catch(e){ $("tmsg").textContent=e.message; } };
+    const del=document.createElement("button"); del.className="del"; del.textContent=pendingT===x.id?"本当に消す":"消す";
+    del.onclick=async()=>{ if(pendingT!==x.id){ pendingT=x.id; drawTT(); return; } pendingT=null; try{ await call("tiktok_delete",x.id); await loadTT(); }catch(e){ $("tmsg").textContent=e.message; } };
+    const parts=[t,m]; if(x.hidden){ const g=document.createElement("span"); g.className="tag"; g.textContent="かくし中"; parts.push(g); }
+    li.append(...parts,tog,del); return li;
+  }));
+}
+$("treload").addEventListener("click",loadTT);
 if(key) refresh();
 </script>
 </body>
