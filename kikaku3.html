@@ -111,9 +111,11 @@ button.go:disabled{opacity:.5;cursor:default}
 .like.pop{animation:pop .45s ease}
 @keyframes pop{0%{transform:scale(.85)}60%{transform:scale(1.12)}100%{transform:scale(1)}}
 .no{flex-wrap:wrap}
-.thumb{position:relative;width:120px;aspect-ratio:9/16;max-width:100%;border-radius:16px;overflow:hidden;background:linear-gradient(160deg,var(--w1),var(--w5));border:0;padding:0;cursor:pointer;display:block}
+.thumb{--tw:120;position:relative;width:120px;aspect-ratio:9/16;max-width:100%;border-radius:16px;overflow:hidden;background:linear-gradient(160deg,var(--w1),var(--w5));border:0;padding:0;cursor:pointer;display:block}
+.thumb .pv{position:absolute;top:0;left:0;width:270px;height:480px;border:0;transform-origin:top left;transform:scale(calc(var(--tw) / 270));pointer-events:none;background:transparent}
+.thumb::after{content:"";position:absolute;inset:0}
 .thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity .3s}
-.thumb .play{position:absolute;inset:auto 8px 8px auto;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center}
+.thumb .play{z-index:1;position:absolute;inset:auto 8px 8px auto;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center}
 .thumb .play::before{content:"";margin-left:3px;border-left:12px solid #fff;border-top:8px solid transparent;border-bottom:8px solid transparent}
 .thumb .smp{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--display);font-weight:800;font-size:13px;letter-spacing:.1em}
 .thumb:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
@@ -130,7 +132,7 @@ button.go:disabled{opacity:.5;cursor:default}
 .empty{background:var(--surface);border:2px dashed var(--line);border-radius:24px;padding:28px 18px;text-align:center;color:var(--muted);font-family:var(--display)}
 .status{font-size:13px;color:var(--muted);margin:0}
 footer{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
-@media (max-width:420px){.thumb{width:96px}}
+@media (max-width:420px){.thumb{width:96px;--tw:96}}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}.like.pop{animation:none}}
 </style>
 </head>
@@ -248,19 +250,17 @@ function render(){
     th.setAttribute("aria-label","動画を再生");
     if(demo){ const s=document.createElement("span"); s.className="smp"; s.textContent="SAMPLE"; th.append(s); }
     else{
-      const im=document.createElement("img"); im.loading="lazy"; im.alt=""; im.referrerPolicy="no-referrer";
-      im.dataset.vid=v.vid; im.style.opacity="0";
-      im.onload=()=>{ im.style.opacity="1"; };
-      im.onerror=()=>{ if(!im.dataset.fb){ im.dataset.fb="1"; im.src="/api/tiktok/thumb?vid="+v.vid; } else im.remove(); };
-      th.append(im); applyInfo(v.vid);
+      // TikTokの埋め込みプレーヤーを小さく置いて、動画の最初の場面をサムネイル代わりに見せる
+      const pv=document.createElement("iframe");
+      pv.className="pv"; pv.loading="lazy"; pv.tabIndex=-1; pv.setAttribute("aria-hidden","true"); pv.title="";
+      pv.src=`https://www.tiktok.com/player/v1/${v.vid}?controls=0&progress_bar=0&play_button=0&volume_control=0&fullscreen_button=0&timestamp=0&autoplay=0&loop=0&music_info=0&description=0&rel=0&native_context_menu=0&closed_caption=0`;
+      th.append(pv);
     }
     const pl=document.createElement("span"); pl.className="play"; th.append(pl);
     th.onclick=()=>{ if(demo) return; openPlayer.has(v.vid)?openPlayer.delete(v.vid):openPlayer.add(v.vid); render(); };
 
     const body=document.createElement("div"); body.className="body";
-    const cap=document.createElement("p"); cap.className="cap"+(v.title?"":" none"); cap.textContent=v.title||"（キャプションなし）";
-    if(!v.title) cap.dataset.capVid=v.vid;
-    body.append(cap);
+    if(v.title){ const cap=document.createElement("p"); cap.className="cap"; cap.textContent=v.title; body.append(cap); }
     if(v.comments.length){
       const ul=document.createElement("ul"); ul.className="voices";
       const showAll=openMore.has(v.vid);
@@ -312,39 +312,6 @@ function render(){
   }));
 }
 
-// ===== サムネイルとキャプションは、見ている人のブラウザから TikTok に直接取りに行く =====
-// （サイトのサーバーからだと TikTok に「問い合わせが多すぎる」と断られやすいため）
-const infoMem=new Map(), infoWait=new Map();
-const INFO_TTL=6*3600e3;
-function infoFromStore(vid){
-  try{ const x=JSON.parse(localStorage.getItem("tt:"+vid)||"null"); if(x && Date.now()-x.t<INFO_TTL) return x; }catch(e){}
-  return null;
-}
-async function getInfo(vid){
-  if(infoMem.has(vid)) return infoMem.get(vid);
-  const st=infoFromStore(vid); if(st){ infoMem.set(vid,st); return st; }
-  if(infoWait.has(vid)) return infoWait.get(vid);
-  const p=(async()=>{
-    try{
-      const r=await fetch("https://www.tiktok.com/oembed?url="+encodeURIComponent("https://www.tiktok.com/@chii_nyan02/video/"+vid));
-      if(!r.ok) throw 0;
-      const d=await r.json();
-      const x={t:Date.now(),thumb:d.thumbnail_url||"",title:d.title||""};
-      infoMem.set(vid,x); try{ localStorage.setItem("tt:"+vid,JSON.stringify(x)); }catch(e){}
-      return x;
-    }catch(e){ const x={t:Date.now(),thumb:"",title:"",fail:true}; infoMem.set(vid,x); return x; }
-    finally{ infoWait.delete(vid); }
-  })();
-  infoWait.set(vid,p); return p;
-}
-async function applyInfo(vid){
-  const x=await getInfo(vid);
-  for(const im of document.querySelectorAll(`img[data-vid="${vid}"]`)){
-    if(im.getAttribute("src")) continue;
-    if(x.thumb) im.src=x.thumb; else { im.dataset.fb="1"; im.src="/api/tiktok/thumb?vid="+vid; }
-  }
-  if(x.title) for(const c of document.querySelectorAll(`[data-cap-vid="${vid}"]`)){ c.textContent=x.title; c.classList.remove("none"); }
-}
 
 async function toggleLike(v,btn){
   const on=!v.liked;
