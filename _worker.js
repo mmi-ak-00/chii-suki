@@ -123,6 +123,17 @@ async function ensureTT(env) {
 }
 const ttVideoUrl = (vid) => `https://www.tiktok.com/@${TT_ACCOUNT}/video/${vid}`;
 
+// TikTok公式の動画情報（oEmbed）を取る。ブラウザと同じような名乗りで頼む
+const TT_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
+async function ttOembed(vid) {
+  const r = await fetch("https://www.tiktok.com/oembed?url=" + encodeURIComponent(ttVideoUrl(vid)), {
+    headers: { "User-Agent": TT_UA, "Accept": "application/json", "Accept-Language": "ja,en;q=0.8" },
+  });
+  let info = null, text = "";
+  try { text = await r.text(); info = JSON.parse(text); } catch { info = null; }
+  return { status: r.status, ok: r.ok, info, text: text.slice(0, 300) };
+}
+
 // 貼られたURLから動画IDを取り出し、ちぃちゃん本人の動画か確かめる
 async function ttResolve(raw) {
   let u;
@@ -156,9 +167,9 @@ async function ttResolve(raw) {
   // TikTok公式の情報（oEmbed）で、動画があること・投稿者を確かめる
   let info;
   try {
-    const r = await fetch("https://www.tiktok.com/oembed?url=" + encodeURIComponent(ttVideoUrl(vid)));
-    if (!r.ok) return { error: "動画が見つかりませんでした。URLを確認してね。" };
-    info = await r.json();
+    const o = await ttOembed(vid);
+    if (!o.ok || !o.info) return { error: "動画が見つかりませんでした。URLを確認してね。" };
+    info = o.info;
   } catch { return { error: "動画を確認できませんでした。少し待ってからもう一度どうぞ。" }; }
   const author = String(info.author_unique_id || "").toLowerCase()
     || String(info.author_url || "").split("@")[1]?.toLowerCase() || "";
@@ -283,6 +294,7 @@ async function ttComment({ request, env }) {
 }
 
 // サムネイル（TikTokの画像アドレスは時間がたつと使えなくなるので、そのつど取り直して6時間ためておく）
+// うまく中継できないときは、画像のアドレスへ直接案内する（見る人のブラウザが読み込む）
 async function ttThumb({ request, env, ctx }) {
   const url = new URL(request.url);
   const vid = (url.searchParams.get("vid") || "").replace(/\D/g, "");
@@ -291,16 +303,54 @@ async function ttThumb({ request, env, ctx }) {
   const key = new Request(new URL("/api/tiktok/thumb?vid=" + vid, url).toString());
   if (cache) { const hit = await cache.match(key); if (hit) return hit; }
   try {
-    const o = await fetch("https://www.tiktok.com/oembed?url=" + encodeURIComponent(ttVideoUrl(vid)));
-    if (!o.ok) return new Response("", { status: 404 });
-    const info = await o.json();
-    if (!info.thumbnail_url) return new Response("", { status: 404 });
-    const img = await fetch(info.thumbnail_url);
-    if (!img.ok) return new Response("", { status: 404 });
-    const res = new Response(img.body, { headers: { "content-type": img.headers.get("content-type") || "image/jpeg", "cache-control": "public, max-age=21600" } });
-    if (cache) ctx?.waitUntil?.(cache.put(key, res.clone()));
-    return res;
-  } catch { return new Response("", { status: 404 }); }
+    const o = await ttOembed(vid);
+    const thumb = o.info?.thumbnail_url;
+    if (!thumb) return new Response("", { status: 404, headers: { "cache-control": "no-store" } });
+    // ついでに、空だったキャプションを埋めておく
+    if (o.info?.title) {
+      try {
+        await ensureTT(env);
+        const u = await env.DB.prepare("UPDATE tiktok SET title=? WHERE vid=? AND (title IS NULL OR title='')").bind(String(o.info.title).slice(0, 200), vid).run();
+        if ((u?.meta?.changes ?? u?.changes ?? 0) > 0) await env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='tt_ver'").run();
+      } catch {}
+    }
+    try {
+      const img = await fetch(thumb, { headers: { "User-Agent": TT_UA, "Referer": "https://www.tiktok.com/", "Accept": "image/avif,image/webp,image/*,*/*" } });
+      const type = img.headers.get("content-type") || "";
+      if (img.ok && type.startsWith("image/")) {
+        const res = new Response(img.body, { headers: { "content-type": type, "cache-control": "public, max-age=21600" } });
+        if (cache) ctx?.waitUntil?.(cache.put(key, res.clone()));
+        return res;
+      }
+    } catch {}
+    return new Response("", { status: 302, headers: { "Location": thumb, "cache-control": "no-store" } });
+  } catch { return new Response("", { status: 404, headers: { "cache-control": "no-store" } }); }
+}
+
+// 管理ページ用：サムネイルが出ない原因を調べる
+async function ttDiagnose(env, vid) {
+  const out = { vid };
+  try {
+    const o = await ttOembed(vid);
+    out.oembed_status = o.status;
+    out.has_title = !!o.info?.title;
+    out.has_thumbnail = !!o.info?.thumbnail_url;
+    out.author = o.info?.author_unique_id || o.info?.author_name || "";
+    if (!o.info) out.oembed_body = o.text;
+    if (o.info?.title) {
+      const u = await env.DB.prepare("UPDATE tiktok SET title=? WHERE vid=? AND (title IS NULL OR title='')").bind(String(o.info.title).slice(0, 200), vid).run();
+      if ((u?.meta?.changes ?? u?.changes ?? 0) > 0) { await env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='tt_ver'").run(); out.title_fixed = true; }
+    }
+    if (o.info?.thumbnail_url) {
+      out.thumbnail_host = new URL(o.info.thumbnail_url).host;
+      try {
+        const img = await fetch(o.info.thumbnail_url, { headers: { "User-Agent": TT_UA, "Referer": "https://www.tiktok.com/" } });
+        out.image_status = img.status;
+        out.image_type = img.headers.get("content-type") || "";
+      } catch (e) { out.image_error = String(e).slice(0, 120); }
+    }
+  } catch (e) { out.error = String(e).slice(0, 120); }
+  return out;
 }
 
 // ===== 生誕企画のリスト =====
@@ -416,6 +466,12 @@ async function adminPost({ request, env }) {
         env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='tt_ver'"),
       ]);
       return json({ ok: true });
+    case "tiktok_check": {
+      await ensureTT(env);
+      const vid = String(body.vid ?? "").replace(/\D/g, "");
+      if (!vid) return json({ error: "動画が指定されていません。" }, 400);
+      return json({ result: await ttDiagnose(env, vid) });
+    }
     case "tiktok_delete":
       await ensureTT(env);
       await env.DB.batch([

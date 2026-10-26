@@ -247,7 +247,7 @@ function render(){
     const th=document.createElement("button"); th.className="thumb"; th.type="button";
     th.setAttribute("aria-label","動画を再生");
     if(demo){ const s=document.createElement("span"); s.className="smp"; s.textContent="SAMPLE"; th.append(s); }
-    else{ const im=document.createElement("img"); im.loading="lazy"; im.alt=""; im.src="/api/tiktok/thumb?vid="+v.vid; im.onerror=()=>im.remove(); th.append(im); }
+    else{ const im=document.createElement("img"); im.loading="lazy"; im.alt=""; im.referrerPolicy="no-referrer"; im.src="/api/tiktok/thumb?vid="+v.vid; im.onerror=()=>im.remove(); th.append(im); }
     const pl=document.createElement("span"); pl.className="play"; th.append(pl);
     th.onclick=()=>{ if(demo) return; openPlayer.has(v.vid)?openPlayer.delete(v.vid):openPlayer.add(v.vid); render(); };
 

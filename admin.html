@@ -233,7 +233,15 @@ function drawTT(){
     const del=document.createElement("button"); del.className="del"; del.textContent=pendingT===x.id?"本当に消す":"消す";
     del.onclick=async()=>{ if(pendingT!==x.id){ pendingT=x.id; drawTT(); return; } pendingT=null; try{ await call("tiktok_delete",x.id); await loadTT(); }catch(e){ $("tmsg").textContent=e.message; } };
     const parts=[t,m]; if(x.hidden){ const g=document.createElement("span"); g.className="tag"; g.textContent="かくし中"; parts.push(g); }
-    li.append(...parts,tog,del); return li;
+    const dg=document.createElement("button"); dg.className="sub"; dg.textContent="サムネ診断";
+    const out=document.createElement("pre"); out.className="m"; out.style.cssText="flex-basis:100%;white-space:pre-wrap;margin:0;font-size:12px"; out.hidden=true;
+    dg.onclick=async()=>{
+      dg.disabled=true; out.hidden=false; out.textContent="調べています…";
+      try{ const d=await call("tiktok_check",x.id,{vid:x.vid}); out.textContent=JSON.stringify(d.result,null,1); }
+      catch(e){ out.textContent=e.message; }
+      dg.disabled=false;
+    };
+    li.append(...parts,tog,del,dg,out); return li;
   }));
 }
 $("treload").addEventListener("click",loadTT);
