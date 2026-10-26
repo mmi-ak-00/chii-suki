@@ -61,6 +61,43 @@ async function postsPost({ request, env }) {
   return json({ ok: true });
 }
 
+// ---- ちぃちゃんへのメッセージ（管理ページでだけ読める） ----
+const LETTER_MAX = 1000;
+const LETTER_WAIT_SEC = 60;
+const LETTER_PER_HOUR = 5;
+let lettersReady = false;
+async function ensureLetters(env) {
+  if (lettersReady) return;
+  await env.DB.batch([
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS letters (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, message TEXT NOT NULL, at INTEGER NOT NULL, iph TEXT)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_letters_iph ON letters (iph, at)"),
+  ]);
+  lettersReady = true;
+}
+
+async function lettersPost({ request, env }) {
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "送れませんでした。" }, 400); }
+  const name = String(body?.name ?? "").replace(/\s+/g, " ").trim().slice(0, 20);
+  const message = String(body?.message ?? "").replace(/\r\n/g, "\n").replace(/\n{4,}/g, "\n\n\n").trim();
+  if (!message) return json({ error: "メッセージを書いてね。" }, 400);
+  if ([...message].length > LETTER_MAX) return json({ error: `${LETTER_MAX}文字までで書いてね。` }, 400);
+
+  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+  const iph = await sha(ip + (env.ADMIN_KEY || "salt"));
+  const now = Date.now();
+  await ensureLetters(env);
+  const recent = await env.DB
+    .prepare("SELECT SUM(at > ?) AS short, COUNT(*) AS hour FROM letters WHERE iph=? AND at > ?")
+    .bind(now - LETTER_WAIT_SEC * 1000, iph, now - 3600 * 1000)
+    .first();
+  if (recent && recent.short > 0) return json({ error: "さっき送ってくれたばかりなので、1分ほど待ってからどうぞ。" }, 429);
+  if (recent && recent.hour >= LETTER_PER_HOUR) return json({ error: "たくさん送ってくれてありがとう！ 少し時間をあけてね。" }, 429);
+
+  await env.DB.prepare("INSERT INTO letters (name, message, at, iph) VALUES (?, ?, ?, ?)").bind(name, message, now, iph).run();
+  return json({ ok: true });
+}
+
 function same(a, b) {
   if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
   let d = 0;
@@ -91,6 +128,16 @@ async function adminPost({ request, env }) {
         bump,
       ]);
       return json({ ok: true });
+    case "letters": {
+      await ensureLetters(env);
+      const { results } = await env.DB
+        .prepare("SELECT id, name, message, at FROM letters ORDER BY id ASC LIMIT 2000").all();
+      return json({ letters: results });
+    }
+    case "delete_letter":
+      await ensureLetters(env);
+      await env.DB.prepare("DELETE FROM letters WHERE id=?").bind(id).run();
+      return json({ ok: true });
     case "delete":
       await env.DB.batch([env.DB.prepare("DELETE FROM posts WHERE id=?").bind(id), bump]);
       return json({ ok: true });
@@ -108,6 +155,10 @@ export default {
       if (url.pathname === "/api/posts") {
         if (request.method === "GET") return await postsGet(c);
         if (request.method === "POST") return await postsPost(c);
+        return json({ error: "method not allowed" }, 405);
+      }
+      if (url.pathname === "/api/letters") {
+        if (request.method === "POST") return await lettersPost(c);
         return json({ error: "method not allowed" }, 405);
       }
       if (url.pathname === "/api/admin") {

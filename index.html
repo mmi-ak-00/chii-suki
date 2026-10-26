@@ -25,6 +25,7 @@
   --accent:#ff7aa2; --accent-ink:#2a0f19;
   --w1:#ff7aa2; --w2:#ffab6b; --w3:#5fd1b0; --w4:#8fa9ff; --w5:#cf96f5; color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.7;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
 .wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
@@ -59,6 +60,18 @@ li.new{animation:pop .5s ease}
 @media (prefers-reduced-motion:reduce){.word,.word.pop,li.new{animation:none;transition:none}}
 
 .demo{background:var(--line);border-radius:14px;padding:8px 14px;font-size:13px}
+.letter{background:var(--surface);border:2px solid var(--line);border-radius:28px;padding:22px 20px;display:flex;flex-direction:column;gap:12px}
+.letter h2{font-size:20px}
+.letter p{margin:0}
+.letter .note{font-size:13px;color:var(--muted)}
+.letter label{font-size:13px;font-weight:700}
+.field{display:flex;flex-direction:column;gap:4px}
+#ln,#lm{font:inherit;font-size:16px;color:var(--fg);background:var(--bg);border:2px solid var(--line);border-radius:14px;padding:10px 14px;outline:none;width:100%}
+#lm{min-height:180px;resize:vertical;line-height:1.7}
+#ln:focus,#lm:focus{border-color:var(--accent)}
+.lrow{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.lcount{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.thanks{background:var(--bg);border-radius:14px;padding:12px 14px;font-family:var(--display)}
 footer{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
 </style>
 </head>
@@ -87,6 +100,27 @@ footer{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
     <div class="bar"><h2>みんなの投稿</h2><span class="count" id="count"></span></div>
     <ul id="list"></ul>
     <p class="status" id="status">読み込み中…</p>
+  </section>
+  <section class="letter" id="letter">
+    <h2>ちぃちゃんを好きになったきっかけ</h2>
+    <p>ここに書いたメッセージは、<strong>生誕アルバム</strong>にまとめてちぃちゃんに届けます。好きになったきっかけを、自由に書いてね。</p>
+    <p class="note">このメッセージはほかの人には表示されません。</p>
+    <form id="lf" autocomplete="off" style="display:flex;flex-direction:column;gap:12px">
+      <div class="field">
+        <label for="ln">お名前（ニックネーム）</label>
+        <input id="ln" maxlength="20" placeholder="例：さくら">
+      </div>
+      <div class="field">
+        <label for="lm">好きになったきっかけ</label>
+        <textarea id="lm" maxlength="1000" placeholder="例：初めてライブを見た日に、笑顔にひとめぼれしました" required></textarea>
+      </div>
+      <div class="lrow">
+        <span class="lcount" id="lc">0 / 1000文字</span>
+        <button id="lsend" type="submit">メッセージを送る</button>
+      </div>
+      <p class="hint" id="lhint" style="margin:0"></p>
+    </form>
+    <p class="thanks" id="lthanks" hidden>メッセージを受け取りました。生誕アルバムに入れて、ちぃちゃんに届けます！</p>
   </section>
   <footer>※ファンによる非公式サイトです</footer>
 </div>
@@ -204,6 +238,25 @@ $("f").addEventListener("submit", async e=>{
     $("t").value=""; $("hint").textContent="投稿しました！"; await load();
   }catch(err){ $("hint").textContent="送れませんでした。通信を確認してもう一度どうぞ。"; }
   finally{ sending=false; $("send").disabled=false; $("t").focus(); }
+});
+
+$("lm").addEventListener("input",()=>{ $("lc").textContent=`${[...$("lm").value].length} / 1000文字`; });
+let lsending=false;
+$("lf").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const name=$("ln").value.trim().slice(0,20), message=$("lm").value.trim();
+  if(!message||lsending) return;
+  lsending=true; $("lsend").disabled=true; $("lhint").textContent="";
+  try{
+    if(!demo){
+      const r=await fetch("/api/letters",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name,message})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok){ $("lhint").textContent=d.error||"送れませんでした。少し待ってからもう一度どうぞ。"; return; }
+    }
+    $("lf").hidden=true; $("lthanks").hidden=false;
+    if(demo) $("lthanks").textContent+="（プレビューなので保存はされません）";
+  }catch(err){ $("lhint").textContent="送れませんでした。通信を確認してもう一度どうぞ。"; }
+  finally{ lsending=false; $("lsend").disabled=false; }
 });
 
 render();
