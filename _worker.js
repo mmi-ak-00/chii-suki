@@ -98,6 +98,36 @@ async function lettersPost({ request, env }) {
   return json({ ok: true });
 }
 
+// ===== 生誕企画のリスト =====
+// 並び順がそのまま「企画①②③…」の番号になります。
+// open: true は最初から公開。false は管理ページで「公開する」を押すまで COMING SOON 表示。
+// soon: COMING SOON のときに出す一言（例 "10/27公開予定"）。
+// page: このサイト内のページ名（例 "kikaku3" → kikaku3.html）。公開前はそのページも開けません。
+const PROJECTS = [
+  { id: "map", title: "聖ちぃ巡礼マップ", desc: "ちぃちゃんの足跡をめぐろう🐾", href: "https://seichii-map.pages.dev", external: true, open: true },
+  { id: "kikaku2", title: "ちぃちゃんの好きなところ", desc: "ちぃちゃんの好きなところを教えて💘", href: "/kikaku2", page: "kikaku2", open: false, soon: "10/27公開予定" },
+];
+
+let projectsReady = false;
+async function projectStates(env) {
+  if (!projectsReady) {
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS project_state (id TEXT PRIMARY KEY, open INTEGER NOT NULL)").run();
+    projectsReady = true;
+  }
+  const { results } = await env.DB.prepare("SELECT id, open FROM project_state").all();
+  const m = new Map(results.map((r) => [r.id, !!r.open]));
+  return PROJECTS.map((p) => ({ ...p, open: m.has(p.id) ? m.get(p.id) : !!p.open }));
+}
+
+async function projectsGet({ env }) {
+  const list = await projectStates(env);
+  return json({
+    projects: list.map((p) => p.open
+      ? { open: true, title: p.title, desc: p.desc, href: p.href, external: !!p.external }
+      : { open: false, soon: p.soon || "" }),
+  });
+}
+
 function same(a, b) {
   if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
   let d = 0;
@@ -138,6 +168,18 @@ async function adminPost({ request, env }) {
       await ensureLetters(env);
       await env.DB.prepare("DELETE FROM letters WHERE id=?").bind(id).run();
       return json({ ok: true });
+    case "projects": {
+      const list = await projectStates(env);
+      return json({ projects: list.map((p) => ({ id: p.id, title: p.title, desc: p.desc, open: p.open })) });
+    }
+    case "set_project": {
+      const pid = String(body.pid ?? "");
+      if (!PROJECTS.some((p) => p.id === pid)) return json({ error: "その企画は見つかりません。" }, 400);
+      await projectStates(env);
+      await env.DB.prepare("INSERT INTO project_state (id, open) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET open=excluded.open")
+        .bind(pid, body.open ? 1 : 0).run();
+      return json({ ok: true });
+    }
     case "delete":
       await env.DB.batch([env.DB.prepare("DELETE FROM posts WHERE id=?").bind(id), bump]);
       return json({ ok: true });
@@ -156,6 +198,14 @@ export default {
         if (request.method === "GET") return await postsGet(c);
         if (request.method === "POST") return await postsPost(c);
         return json({ error: "method not allowed" }, 405);
+      }
+      if (url.pathname === "/api/projects") return await projectsGet(c);
+      // 公開前の企画ページはトップに戻す
+      const pageName = url.pathname.replace(/^\/+|\.html$|\/+$/g, "");
+      if (PROJECTS.some((p) => p.page === pageName)) {
+        const list = await projectStates(env);
+        const p = list.find((x) => x.page === pageName);
+        if (p && !p.open) return Response.redirect(new URL("/", url).toString(), 302);
       }
       if (url.pathname === "/api/letters") {
         if (request.method === "POST") return await lettersPost(c);

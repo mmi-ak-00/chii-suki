@@ -35,6 +35,10 @@ li.hid{opacity:.55}
 #copyout{width:100%;min-height:160px;font:inherit;font-size:14px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--fg)}
 li .t{flex:1 1 220px;min-width:0;overflow-wrap:anywhere}
 li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pj{align-items:center}
+.pj .st{font-size:12px;font-weight:700;border-radius:999px;padding:2px 10px}
+.pj .st.on{background:var(--accent);color:var(--ink)}
+.pj .st.off{background:var(--line);color:var(--muted)}
 .tag{font-size:12px;border-radius:999px;padding:1px 8px;background:var(--line)}
 </style>
 </head>
@@ -49,6 +53,7 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
   <div class="tabs" id="tabs" role="tablist" hidden>
     <button role="tab" data-tab="posts" aria-selected="true">ひとこと</button>
     <button role="tab" data-tab="letters" aria-selected="false">メッセージ</button>
+    <button role="tab" data-tab="projects" aria-selected="false">企画</button>
   </div>
   <section id="lettersView" hidden style="display:flex;flex-direction:column;gap:12px">
     <p class="msg" id="lmsg"></p>
@@ -58,6 +63,10 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
     </div>
     <textarea id="copyout" hidden readonly aria-label="コピー用テキスト"></textarea>
     <ul id="letters"></ul>
+  </section>
+  <section id="projectsView" hidden style="display:flex;flex-direction:column;gap:12px">
+    <p class="msg" id="pmsg">「公開する」を押した企画だけがトップに表示されます。公開前の企画は「COMING SOON」と番号だけが出ます。</p>
+    <ul id="projects"></ul>
   </section>
   <div id="postsView" style="display:flex;flex-direction:column;gap:16px">
   <div class="filters" id="filters" hidden>
@@ -72,8 +81,8 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 const $=id=>document.getElementById(id);
 let key="", rows=[], filter="all", pendingDel=null;
 try{ key=sessionStorage.getItem("k")||""; }catch(e){}
-async function call(action,id){
-  const r=await fetch("/api/admin",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({key,action,id})});
+async function call(action,id,extra){
+  const r=await fetch("/api/admin",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({key,action,id,...(extra||{})})});
   const d=await r.json().catch(()=>({}));
   if(!r.ok) throw new Error(d.error||"うまくいきませんでした。");
   return d;
@@ -150,10 +159,32 @@ $("lreload").addEventListener("click",loadLetters);
 $("tabs").addEventListener("click",e=>{
   const b=e.target.closest("[data-tab]"); if(!b) return;
   for(const x of $("tabs").querySelectorAll("[data-tab]")) x.setAttribute("aria-selected",x===b);
-  const isL=b.dataset.tab==="letters";
-  $("lettersView").hidden=!isL; $("postsView").hidden=isL; $("msg").hidden=isL;
-  if(isL) loadLetters();
+  const tab=b.dataset.tab;
+  $("lettersView").hidden=tab!=="letters"; $("projectsView").hidden=tab!=="projects";
+  $("postsView").hidden=tab!=="posts"; $("msg").hidden=tab!=="posts";
+  if(tab==="letters") loadLetters();
+  if(tab==="projects") loadProjects();
 });
+const NUM="①②③④⑤⑥⑦⑧⑨⑩";
+async function loadProjects(){
+  try{
+    const d=await call("projects");
+    $("projects").replaceChildren(...d.projects.map((p,i)=>{
+      const li=document.createElement("li"); li.className="pj";
+      const t=document.createElement("span"); t.className="t";
+      t.textContent=`企画${NUM[i]||i+1}　${p.title}`;
+      const st=document.createElement("span"); st.className="st "+(p.open?"on":"off"); st.textContent=p.open?"公開中":"COMING SOON";
+      const btn=document.createElement("button"); btn.className=p.open?"sub":"";
+      btn.textContent=p.open?"非公開にもどす":"公開する";
+      btn.onclick=async()=>{
+        btn.disabled=true;
+        try{ await call("set_project",null,{pid:p.id,open:!p.open}); $("pmsg").textContent=`企画${NUM[i]||i+1}を${p.open?"非公開にしました":"公開しました"}。`; await loadProjects(); }
+        catch(e){ $("pmsg").textContent=e.message; btn.disabled=false; }
+      };
+      li.append(t,st,btn); return li;
+    }));
+  }catch(e){ $("pmsg").textContent=e.message; }
+}
 if(key) refresh();
 </script>
 </body>
