@@ -53,6 +53,16 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .rlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .rlist li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 10px;border-radius:10px;background:var(--bg)}
 .rlist li span{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+.appr{display:flex;gap:8px;align-items:flex-start;font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.appr input{margin-top:5px;width:18px;height:18px;accent-color:var(--accent);flex:none}
+.phgrid{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.phgrid li{flex-direction:column;align-items:stretch;padding:8px}
+.phgrid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;background:var(--line);display:block}
+.phgrid .pd{font-weight:700;font-size:13px}
+.phgrid .pc{font-size:13px;overflow-wrap:anywhere}
+.phgrid .pb{display:flex;gap:6px;flex-wrap:wrap}
+.phgrid .pb button{padding:6px 10px;font-size:13px}
+.filters button[data-pf][aria-pressed="true"]{outline:2px solid var(--fg)}
 .tag{font-size:12px;border-radius:999px;padding:1px 8px;background:var(--line)}
 </style>
 </head>
@@ -70,6 +80,7 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
     <button role="tab" data-tab="projects" aria-selected="false">企画</button>
     <button role="tab" data-tab="tiktok" aria-selected="false">TikTok</button>
     <button role="tab" data-tab="words" aria-selected="false">ワード</button>
+    <button role="tab" data-tab="photos" aria-selected="false">写真</button>
   </div>
   <section id="lettersView" hidden style="display:flex;flex-direction:column;gap:12px">
     <p class="msg" id="lmsg"></p>
@@ -79,6 +90,17 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
     </div>
     <textarea id="copyout" hidden readonly aria-label="コピー用テキスト"></textarea>
     <ul id="letters"></ul>
+  </section>
+  <section id="photosView" hidden style="display:flex;flex-direction:column;gap:12px">
+    <p class="msg" id="phmsg"></p>
+    <label class="appr"><input type="checkbox" id="phAppr"> 承認してから年表に載せる（オンのときは「載せる」を押した写真だけが出ます）</label>
+    <div class="filters">
+      <button class="sub" data-pf="pending" aria-pressed="true" type="button">確認待ち</button>
+      <button class="sub" data-pf="shown" aria-pressed="false" type="button">載せている</button>
+      <button class="sub" data-pf="hidden" aria-pressed="false" type="button">かくした</button>
+      <button class="sub" id="phreload" type="button">更新</button>
+    </div>
+    <ul class="phgrid" id="phlist"></ul>
   </section>
   <section id="wordsView" hidden style="display:flex;flex-direction:column;gap:14px">
     <p class="msg" id="wmsg">企画②のワードクラウドを手直しできます。変えるとすぐ、みんなの画面にも反映されます。</p>
@@ -208,12 +230,13 @@ $("tabs").addEventListener("click",e=>{
   const b=e.target.closest("[data-tab]"); if(!b) return;
   for(const x of $("tabs").querySelectorAll("[data-tab]")) x.setAttribute("aria-selected",x===b);
   const tab=b.dataset.tab;
-  $("lettersView").hidden=tab!=="letters"; $("projectsView").hidden=tab!=="projects"; $("tiktokView").hidden=tab!=="tiktok"; $("wordsView").hidden=tab!=="words";
+  $("lettersView").hidden=tab!=="letters"; $("projectsView").hidden=tab!=="projects"; $("tiktokView").hidden=tab!=="tiktok"; $("wordsView").hidden=tab!=="words"; $("photosView").hidden=tab!=="photos";
   $("postsView").hidden=tab!=="posts"; $("msg").hidden=tab!=="posts";
   if(tab==="letters") loadLetters();
   if(tab==="projects") loadProjects();
   if(tab==="tiktok") loadTT();
   if(tab==="words") loadWords();
+  if(tab==="photos") loadPhotos();
 });
 const NUM="①②③④⑤⑥⑦⑧⑨⑩";
 async function loadProjects(){
@@ -338,6 +361,46 @@ $("hf").addEventListener("submit",e=>{
   if(!wrules.hide.includes(w)) wrules.hide=[...wrules.hide,w];
   $("hword").value="";
   saveWords(`「${w}」を出さないようにしました。`);
+});
+let phItems=[], phFilter="pending", pendingP=null;
+async function loadPhotos(){
+  try{
+    const d=await call("photo_list"); phItems=d.items; $("phAppr").checked=!!d.approval;
+    const c=s=>phItems.filter(x=>x.status===s).length;
+    $("phmsg").textContent=`確認待ち ${c("pending")}枚・載せている ${c("shown")}枚・かくした ${c("hidden")}枚（保存できるのは全部で${d.limit}枚まで）`;
+    drawPhotos();
+  }catch(e){ $("phmsg").textContent=e.message; }
+}
+function phLabel(x){ const [y,m,d]=x.d.split("-").map(Number); return x.day_known?`${y}.${String(m).padStart(2,"0")}.${String(d).padStart(2,"0")}`:`${y}年${m}月ごろ`; }
+function drawPhotos(){
+  const view=phItems.filter(x=>x.status===phFilter);
+  if(!view.length){ $("phlist").replaceChildren(Object.assign(document.createElement("li"),{className:"m",textContent:"ここに入る写真はありません。"})); return; }
+  $("phlist").replaceChildren(...view.map(x=>{
+    const li=document.createElement("li");
+    const a=document.createElement("a"); a.href=`/api/photos/img?id=${x.id}&s=full`; a.target="_blank"; a.rel="noopener";
+    const im=document.createElement("img"); im.src=`/api/photos/img?id=${x.id}`; im.alt=""; im.loading="lazy"; a.append(im);
+    const d=document.createElement("span"); d.className="pd"; d.textContent=phLabel(x);
+    const c=document.createElement("span"); c.className="pc"; c.textContent=x.comment||"（ひとことなし）";
+    const m=document.createElement("span"); m.className="m"; m.textContent="届いた日時："+new Date(x.at).toLocaleString("ja-JP");
+    const pb=document.createElement("div"); pb.className="pb";
+    const mk=(label,cls,fn)=>{const b=document.createElement("button"); b.type="button"; b.className=cls; b.textContent=label; b.onclick=fn; return b;};
+    const set=st=>async()=>{ try{ await call("photo_status",x.id,{status:st}); await loadPhotos(); }catch(e){ $("phmsg").textContent=e.message; } };
+    if(x.status!=="shown") pb.append(mk("載せる","",set("shown")));
+    if(x.status!=="hidden") pb.append(mk("かくす","sub",set("hidden")));
+    pb.append(mk(pendingP===x.id?"本当に消す":"消す","del",async()=>{
+      if(pendingP!==x.id){ pendingP=x.id; drawPhotos(); return; }
+      pendingP=null; try{ await call("photo_delete",x.id); await loadPhotos(); }catch(e){ $("phmsg").textContent=e.message; }
+    }));
+    li.append(a,d,c,m,pb); return li;
+  }));
+}
+document.querySelectorAll("[data-pf]").forEach(b=>b.addEventListener("click",()=>{
+  phFilter=b.dataset.pf; document.querySelectorAll("[data-pf]").forEach(x=>x.setAttribute("aria-pressed",x===b)); drawPhotos();
+}));
+$("phreload").addEventListener("click",loadPhotos);
+$("phAppr").addEventListener("change",async()=>{
+  try{ await call("photo_approval",null,{on:$("phAppr").checked}); $("phmsg").textContent=$("phAppr").checked?"これから届く写真は、あなたが「載せる」を押すまで年表に出ません。":"これから届く写真は、すぐ年表に載ります。"; }
+  catch(e){ $("phmsg").textContent=e.message; }
 });
 if(key) refresh();
 </script>

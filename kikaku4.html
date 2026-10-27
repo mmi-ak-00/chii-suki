@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>23歳のちぃ記録</title>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ちぃむみーてぃんぐ2026">
+<meta property="og:title" content="23歳のちぃ記録｜ちぃむみーてぃんぐ2026">
+<meta property="og:description" content="ちぃむみーてぃんぐ2026 企画④ 23歳のちぃちゃんの1年を振り返ろう🗓️">
+<meta property="og:image" content="/ogp-kikaku4.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="/ogp-kikaku4.png">
+<meta name="description" content="ちぃちゃん生誕企画「ちぃむみーてぃんぐ2026」企画④ 23歳のちぃ記録">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
+<style>
+/* Layout: 戻るリンク → 見出し → 年表（横に長い線分。写真が線の上下にふわっと浮かぶ。横スクロール）→ 写真を送るフォーム */
+:root{
+  --bg:#fff7f9; --surface:#ffffff; --fg:#3b2a33; --muted:#8a7480; --line:#f1d9e2;
+  --accent:#e8517f; --accent-ink:#ffffff;
+  --w1:#e8517f; --w2:#f08a3c; --w3:#3aa58a; --w4:#5b7fe0; --w5:#a35fd1;
+  --rail:#e8517f; --sky1:#fff0f5; --sky2:#f3f0ff; --frame:#ffffff; --shadow:rgba(80,30,50,.18);
+  --display:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",system-ui,sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1f1519; --surface:#2a1d23; --fg:#f6e9ee; --muted:#b59aa6; --line:#43303a;
+  --accent:#ff7aa2; --accent-ink:#2a0f19;
+  --w1:#ff7aa2; --w2:#ffab6b; --w3:#5fd1b0; --w4:#8fa9ff; --w5:#cf96f5;
+  --rail:#ff7aa2; --sky1:#2a1c24; --sky2:#221d30; --frame:#f6e9ee; --shadow:rgba(0,0,0,.45); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1f1519; --surface:#2a1d23; --fg:#f6e9ee; --muted:#b59aa6; --line:#43303a;
+  --accent:#ff7aa2; --accent-ink:#2a0f19;
+  --w1:#ff7aa2; --w2:#ffab6b; --w3:#5fd1b0; --w4:#8fa9ff; --w5:#cf96f5;
+  --rail:#ff7aa2; --sky1:#2a1c24; --sky2:#221d30; --frame:#f6e9ee; --shadow:rgba(0,0,0,.45); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.back{font-family:var(--display);font-weight:800;font-size:14px;color:var(--accent);text-decoration:none;align-self:flex-start}
+.back:hover,.back:focus-visible{text-decoration:underline}
+.demo{background:var(--line);border-radius:14px;padding:8px 14px;font-size:13px;margin:0}
+header{display:flex;flex-direction:column;gap:6px}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(28px,7vw,40px);line-height:1.2;margin:0;text-wrap:balance}
+h1 span{color:var(--accent)}
+.sub{margin:0;font-family:var(--display);font-weight:800;font-size:16px}
+.lead{margin:0;color:var(--muted);font-size:14px}
+
+/* ===== 年表 ===== */
+.tl-box{position:relative;border-radius:28px;background:linear-gradient(180deg,var(--sky1),var(--sky2));border:2px solid var(--line);overflow:hidden}
+.tl-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:14px 18px 0}
+.tl-head h2{font-family:var(--display);font-weight:800;font-size:18px;margin:0}
+.tl-head .meta{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.swipe{font-size:12px;color:var(--muted);padding:0 18px;margin:2px 0 0}
+.tl-scroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:thin;padding:6px 0 10px}
+.tl{position:relative;margin:0}
+.rail{position:absolute;left:0;right:0;height:4px;border-radius:4px;background:linear-gradient(90deg,var(--w1),var(--w2),var(--w3),var(--w4),var(--w5))}
+.end{position:absolute;width:18px;height:18px;border-radius:50%;background:var(--surface);border:4px solid var(--rail);transform:translate(-50%,-50%)}
+.endlab{position:absolute;transform:translateX(-50%);font-family:var(--display);font-weight:800;font-size:13px;white-space:nowrap;text-align:center;line-height:1.3}
+.endlab small{display:block;font-family:var(--body);font-weight:700;font-size:11px;color:var(--accent)}
+.tick{position:absolute;width:2px;height:12px;background:var(--muted);opacity:.5;transform:translate(-50%,-50%)}
+.mlab{position:absolute;transform:translateX(-50%);font-size:12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.mlab b{font-family:var(--display);color:var(--fg)}
+.dot{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--surface);border:3px solid var(--accent);transform:translate(-50%,-50%);z-index:2}
+.stem{position:absolute;width:0;border-left:2px dotted var(--accent);opacity:.55;transform:translateX(-50%)}
+.ph{position:absolute;width:var(--pw);height:var(--pw);padding:5px;border:0;border-radius:14px;background:var(--frame);box-shadow:0 8px 18px var(--shadow);cursor:pointer;
+  transform:translate(-50%,0) rotate(var(--rot));animation:floaty var(--dur) ease-in-out var(--delay) infinite;z-index:3}
+.ph img{width:100%;height:100%;object-fit:cover;border-radius:10px;display:block;background:var(--line)}
+.ph:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.ph.on{z-index:6;animation:none;transform:translate(-50%,0) rotate(0deg) scale(1.12);box-shadow:0 12px 26px var(--shadow)}
+@keyframes floaty{0%,100%{transform:translate(-50%,0) rotate(var(--rot))}50%{transform:translate(-50%,-7px) rotate(calc(var(--rot) * -0.4))}}
+.ph.in{animation:popin .6s cubic-bezier(.2,1.4,.4,1) both, floaty var(--dur) ease-in-out calc(var(--delay) + .6s) infinite}
+@keyframes popin{from{opacity:0;transform:translate(-50%,14px) scale(.7)}to{opacity:1;transform:translate(-50%,0) rotate(var(--rot))}}
+
+/* タップで浮き出るひとこと */
+.bub{position:absolute;z-index:7;transform:translateX(-50%);width:max-content;max-width:min(260px,80vw);background:var(--surface);color:var(--fg);border:2px solid var(--accent);border-radius:16px;padding:8px 12px;box-shadow:0 10px 24px var(--shadow);animation:rise .35s ease-out both;font-size:14px;line-height:1.6}
+.bub::after{content:"";position:absolute;left:calc(50% + var(--ax,0px));width:12px;height:12px;background:var(--surface);border:2px solid var(--accent);transform:translateX(-50%) rotate(45deg)}
+.bub.up::after{bottom:-8px;border-top:0;border-left:0}
+.bub.down::after{top:-8px;border-bottom:0;border-right:0}
+.bub .bd{display:block;font-family:var(--display);font-weight:800;font-size:12px;color:var(--accent)}
+.bub .bt{display:block;overflow-wrap:anywhere}
+.bub .big{margin-top:4px;font:inherit;font-size:12px;font-weight:700;color:var(--muted);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
+@keyframes rise{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+.empty-tl{position:absolute;left:50%;transform:translate(-50%,-140%);font-family:var(--display);color:var(--muted);font-size:14px;white-space:nowrap}
+
+/* 大きく見る */
+.viewer{position:fixed;inset:0;z-index:50;background:rgba(20,10,15,.82);display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.viewer figure{margin:0;max-width:min(560px,100%);display:flex;flex-direction:column;gap:10px;align-items:center}
+.viewer img{max-width:100%;max-height:70vh;border-radius:14px;background:#000}
+.viewer figcaption{color:#fff;text-align:center;font-size:15px}
+.viewer figcaption b{display:block;font-family:var(--display);color:#ffb3c9;font-size:13px}
+.viewer .close{position:absolute;top:max(12px,env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));font:inherit;font-weight:700;background:rgba(255,255,255,.15);color:#fff;border:0;border-radius:999px;padding:8px 14px;cursor:pointer}
+
+/* ===== 送るフォーム ===== */
+.send{background:var(--surface);border:2px solid var(--line);border-radius:28px;padding:20px 18px;display:flex;flex-direction:column;gap:14px}
+.send h2{font-family:var(--display);font-weight:800;font-size:18px;margin:0}
+.field{position:relative;margin-top:10px}
+.field>label:not(.drop),.field>.lab{white-space:nowrap;position:absolute;top:-11px;left:14px;padding:0 8px;background:var(--surface);font-family:var(--display);font-weight:800;font-size:14px;line-height:22px;color:var(--accent);display:flex;align-items:center;gap:6px;z-index:1}
+.opt{font-family:var(--body);font-weight:700;font-size:11px;line-height:1;color:var(--accent-ink);background:var(--accent);border-radius:999px;padding:3px 8px}
+.field input[type=text],.field select{display:block;width:100%;font:inherit;font-size:16px;color:var(--fg);background:var(--bg);border:2px solid var(--line);border-radius:14px;padding:16px 14px 10px;outline:none;appearance:none}
+.field input:focus,.field select:focus{border-color:var(--accent)}
+.drop{position:relative;display:flex;align-items:center;gap:14px;background:var(--bg);border:2px dashed var(--line);border-radius:14px;padding:18px 14px 12px;cursor:pointer}
+.drop:focus-within{border-color:var(--accent)}
+.drop input{position:absolute;width:1px;height:1px;opacity:0}
+.drop .pv{width:72px;height:72px;border-radius:12px;background:var(--line);flex:none;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:26px}
+.drop .pv img{width:100%;height:100%;object-fit:cover}
+.drop .tx{font-size:14px;color:var(--muted)}
+.drop .tx b{display:block;color:var(--fg);font-family:var(--display)}
+.cal{background:var(--bg);border:2px solid var(--line);border-radius:14px;padding:16px 12px 12px;display:flex;flex-direction:column;gap:8px}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cal-nav b{font-family:var(--display);font-size:17px;font-variant-numeric:tabular-nums}
+.cal-nav button{width:40px;height:40px;border-radius:50%;border:2px solid var(--line);background:var(--surface);color:var(--fg);font-size:22px;line-height:1;cursor:pointer}
+.cal-nav button:disabled{opacity:.3;cursor:default}
+.cal-week,.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.cal-week span{font-size:12px;color:var(--muted);font-weight:700}
+.cal-week span:first-child{color:var(--w1)}.cal-week span:last-child{color:var(--w4)}
+.cal-grid button{aspect-ratio:1;min-width:0;border:0;border-radius:50%;background:transparent;color:var(--fg);font:inherit;font-size:15px;font-variant-numeric:tabular-nums;cursor:pointer}
+.cal-grid button:hover{background:var(--line)}
+.cal-grid button:disabled{color:var(--muted);opacity:.35;cursor:default;background:transparent}
+.cal-grid button.sel{background:var(--accent);color:var(--accent-ink);font-weight:700}
+.cal-grid button.today{box-shadow:inset 0 0 0 2px var(--line)}
+.cal-grid button:focus-visible,.cal-nav button:focus-visible,.cal-month:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+.cal-month{align-self:stretch;font:inherit;font-size:14px;font-weight:700;border:2px dashed var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:8px 12px;cursor:pointer}
+.cal-month[aria-pressed="true"]{border-style:solid;border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+.cal-pick{margin:0;text-align:center;font-family:var(--display);font-weight:800;font-size:14px;color:var(--muted)}
+.cal-pick.on{color:var(--accent)}
+
+.note{margin:0;font-size:13px;color:var(--muted)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.hint{margin:0;font-size:13px;color:var(--muted);min-height:1.4em}
+.hint.ok{color:var(--w3)}
+.go{font-family:var(--display);font-weight:800;font-size:16px;border:0;border-radius:999px;padding:12px 26px;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+.go:disabled{opacity:.5;cursor:default}
+.go:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
+.status{font-size:13px;color:var(--muted);margin:0}
+footer{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
+@media (prefers-reduced-motion:reduce){.ph,.ph.in{animation:none}.bub{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">← ちぃむみーてぃんぐ2026 トップへ</a>
+  <p class="demo" id="demo" hidden>プレビュー表示中です。並んでいる写真はサンプルです。</p>
+
+  <header>
+    <h1><span>23歳</span>のちぃ記録</h1>
+    <p class="sub">23歳のちぃちゃんの1年を振り返ろう🗓️</p>
+    <p class="lead">みんなの写真が、2025.11.02〜2026.11.01の1年の線の上に並びます。写真をタップすると、ひとことが浮かびます。</p>
+  </header>
+
+  <section class="tl-box" aria-labelledby="tlTitle">
+    <div class="tl-head"><h2 id="tlTitle">ちぃ記録 年表</h2><span class="meta" id="tlMeta"></span></div>
+    <p class="swipe">← 横にスワイプして1年をたどれます →</p>
+    <div class="tl-scroll" id="tlScroll">
+      <div class="tl" id="tl" role="list" aria-label="23歳のちぃちゃんの写真の年表"></div>
+    </div>
+  </section>
+  <p class="status" id="status">読み込み中…</p>
+
+  <section class="send" aria-labelledby="sendTitle">
+    <h2 id="sendTitle">ベストショットを送る</h2>
+    <form id="pf" autocomplete="off" style="display:flex;flex-direction:column;gap:14px">
+      <div class="field">
+        <span class="lab">写真</span>
+        <label class="drop" for="pfile">
+          <span class="pv" id="pvBox" aria-hidden="true">📷</span>
+          <span class="tx"><b id="pvName">写真をえらぶ</b>タップしてカメラロールから1枚えらんでね</span>
+          <input id="pfile" type="file" accept="image/*" required>
+        </label>
+      </div>
+      <div class="field">
+        <span class="lab" id="calLab">いつ？</span>
+        <div class="cal" role="group" aria-labelledby="calLab">
+          <div class="cal-nav">
+            <button type="button" id="calPrev" aria-label="前の月">‹</button>
+            <b id="calTitle" aria-live="polite"></b>
+            <button type="button" id="calNext" aria-label="次の月">›</button>
+          </div>
+          <div class="cal-week" aria-hidden="true"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
+          <div class="cal-grid" id="calGrid"></div>
+          <button type="button" class="cal-month" id="calMonthOnly" aria-pressed="false">日にちは分からない（この月で送る）</button>
+          <p class="cal-pick" id="calPick">日付をタップしてね</p>
+        </div>
+      </div>
+      <div class="field">
+        <label for="pcomment">ひとこと<span class="opt">なくてもOK</span></label>
+        <input id="pcomment" type="text" maxlength="60" placeholder="例：サンタ衣装可愛すぎる！">
+      </div>
+      <p class="note" id="pnote">自分で撮った写真や、みんなに見せても大丈夫な写真を送ってね。</p>
+      <div class="row">
+        <p class="hint" id="ph"></p>
+        <button class="go" id="pgo" type="submit">年表に送る</button>
+      </div>
+    </form>
+  </section>
+
+  <footer>※ファンによる非公式サイトです</footer>
+</div>
+
+<div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-label="写真を大きく見る">
+  <button class="close" id="vclose" type="button">とじる ✕</button>
+  <figure><img id="vimg" alt=""><figcaption id="vcap"></figcaption></figure>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const FROM="2025-11-02", TO="2026-11-01";
+const DAY=864e5;
+const t0=Date.UTC(2025,10,2), t1=Date.UTC(2026,10,1);
+let photos=[], ver=-1, demo=false, approval=true, timer=null, openId=null;
+const shownIds=new Set();
+
+// ---------- 日付 ----------
+function dateMs(p){
+  const [y,m,d]=p.d.split("-").map(Number);
+  if(p.dayKnown) return Date.UTC(y,m-1,d);
+  // 月だけのときは、その月の（期間内の）まん中あたり
+  let a=Date.UTC(y,m-1,1), b=Date.UTC(y,m,0);
+  a=Math.max(a,t0); b=Math.min(b,t1);
+  return a+(b-a)/2;
+}
+function dateLabel(p){
+  const [y,m,d]=p.d.split("-").map(Number);
+  return p.dayKnown?`${y}.${String(m).padStart(2,"0")}.${String(d).padStart(2,"0")}`:`${y}年${m}月ごろ`;
+}
+function hash(s){let h=0;for(const c of String(s))h=(h*31+c.codePointAt(0))|0;return Math.abs(h);}
+
+// ---------- 年表を描く ----------
+function render(){
+  const box=$("tlScroll"), tl=$("tl");
+  const viewW=box.clientWidth||360;
+  const PW=window.innerWidth<480?70:84;           // 写真の大きさ
+  const PAD=Math.max(56,PW*0.75);                  // 線の左右の余白
+  const W=Math.max(viewW, 1500);                   // 線の長さ（1年分）
+  const xOf=ms=>PAD+(ms-t0)/(t1-t0)*(W-PAD*2);
+
+  // 写真をどの段に置くか（左から順に、空いている段へ。上・下・上2・下2…）
+  const list=[...photos].map(p=>({p,x:xOf(dateMs(p))})).sort((a,b)=>a.x-b.x);
+  const GAP=PW+10, ORDER=[-1,1,-2,2,-3,3,-4,4];
+  const last={};
+  let maxLane=1;
+  for(const it of list){
+    let lane=ORDER.find(l=>last[l]===undefined || it.x-last[l]>=GAP);
+    if(lane===undefined){ lane=ORDER.reduce((a,l)=>(last[l]??-1e9)<(last[a]??-1e9)?l:a,ORDER[0]); }
+    last[lane]=it.x; it.lane=lane; maxLane=Math.max(maxLane,Math.abs(lane));
+  }
+  const LANE=PW+34;
+  const H=Math.max(300, maxLane*LANE*2+120) + 150;   // 上下に、ひとことの吹き出しが出る余白
+  const mid=H/2;
+  tl.style.width=W+"px"; tl.style.height=H+"px";
+  tl.style.setProperty("--pw",PW+"px");
+
+  const els=[];
+  const add=(cls,style,html)=>{const e=document.createElement("div");e.className=cls;Object.assign(e.style,style);if(html!=null)e.innerHTML=html;els.push(e);return e;};
+  add("rail",{top:(mid-2)+"px",left:PAD+"px",right:PAD+"px"});
+  add("end",{left:PAD+"px",top:mid+"px"});
+  add("end",{left:(W-PAD)+"px",top:mid+"px"});
+  add("endlab",{left:PAD+"px",top:(mid+16)+"px"},"2025.11.02<small>23歳スタート</small>");
+  add("endlab",{left:(W-PAD)+"px",top:(mid+16)+"px"},"2026.11.01<small>23歳ラスト</small>");
+  // 月の目盛り
+  for(let y=2025,m=11;;){
+    m++; if(m>12){m=1;y++;}
+    const ms=Date.UTC(y,m-1,1); if(ms>=t1) break;
+    const x=xOf(ms);
+    add("tick",{left:x+"px",top:mid+"px"});
+    add("mlab",{left:x+"px",top:(mid+12)+"px"}, m===1?`<b>${y}</b> ${m}月`:`${m}月`);
+  }
+  if(!photos.length) add("empty-tl",{top:mid+"px"},"最初の1枚を送ってね📷");
+
+  for(const it of list){
+    const {p,x,lane}=it;
+    const up=lane<0, k=Math.abs(lane);
+    const top=up? mid-k*LANE-PW+6 : mid+k*LANE-6+ (k===1?18:0);
+    const stemTop=up? top+PW : mid, stemH=up? mid-(top+PW) : top-mid;
+    add("stem",{left:x+"px",top:stemTop+"px",height:Math.max(0,stemH)+"px"});
+    add("dot",{left:x+"px",top:mid+"px"});
+    const b=document.createElement("button");
+    b.type="button"; b.className="ph"+(shownIds.size&&!shownIds.has(p.id)?" in":"")+(openId===p.id?" on":"");
+    b.setAttribute("role","listitem");
+    b.setAttribute("aria-label",`${dateLabel(p)}の写真${p.comment?"：「"+p.comment+"」":""}`);
+    b.style.left=x+"px"; b.style.top=top+"px";
+    const h=hash(p.id);
+    b.style.setProperty("--rot",((h%9)-4)+"deg");
+    b.style.setProperty("--dur",(4.2+(h%7)*0.35)+"s");
+    b.style.setProperty("--delay",(-(h%10)*0.4)+"s");
+    const img=document.createElement("img"); img.alt=""; img.loading="lazy"; img.decoding="async";
+    img.src=p.thumbUrl||`/api/photos/img?id=${p.id}`;
+    b.append(img);
+    b.onclick=e=>{ e.stopPropagation(); openId=(openId===p.id?null:p.id); render(); };
+    els.push(b);
+    if(openId===p.id){
+      const bub=document.createElement("div");
+      bub.className="bub "+(up?"up":"down");
+      bub.style.left=x+"px"; bub.dataset.x=x;
+      if(up) bub.style.bottom=(H-top+14)+"px"; else bub.style.top=(top+PW+14)+"px";
+      const d=document.createElement("span"); d.className="bd"; d.textContent=dateLabel(p);
+      const t=document.createElement("span"); t.className="bt"; t.textContent=p.comment||"（ひとことなし）";
+      const big=document.createElement("button"); big.type="button"; big.className="big"; big.textContent="大きく見る";
+      big.onclick=e=>{ e.stopPropagation(); openViewer(p); };
+      bub.append(d,t,big);
+      bub.onclick=e=>e.stopPropagation();
+      els.push(bub);
+    }
+  }
+  tl.replaceChildren(...els);
+  // 吹き出しが年表の上や下からはみ出すときは、反対側（線のほう）に出す
+  const bub=tl.querySelector(".bub");
+  if(bub){
+    // 左右の端では吹き出しを内側に寄せ、しっぽは写真の位置を指したままにする
+    const x=+bub.dataset.x, bw=bub.offsetWidth, half=bw/2, edge=10;
+    const cx=Math.min(Math.max(x,half+edge),W-half-edge);
+    bub.style.left=cx+"px";
+    const ax=Math.max(-(half-22),Math.min(half-22,x-cx));
+    bub.style.setProperty("--ax",ax+"px");
+    const r=bub.getBoundingClientRect(), box=tl.getBoundingClientRect();
+    const ph=tl.querySelector(".ph.on");
+    if(ph){
+      const pt=parseFloat(ph.style.top);
+      if(bub.classList.contains("up") && r.top<box.top+4){
+        bub.classList.replace("up","down"); bub.style.bottom=""; bub.style.top=(pt+PW+14)+"px";
+      }else if(bub.classList.contains("down") && r.bottom>box.bottom-4){
+        bub.classList.replace("down","up"); bub.style.top=""; bub.style.bottom=(H-pt+14)+"px";
+      }
+    }
+  }
+  for(const p of photos) shownIds.add(p.id);
+  $("tlMeta").textContent=photos.length?`${photos.length}枚`:"";
+}
+document.addEventListener("click",()=>{ if(openId!==null){ openId=null; render(); } });
+window.addEventListener("resize",()=>{ clearTimeout(window.__rz); window.__rz=setTimeout(render,150); });
+
+// ---------- 大きく見る ----------
+function openViewer(p){
+  $("vimg").src=p.fullUrl||`/api/photos/img?id=${p.id}&s=full`;
+  $("vcap").innerHTML=""; const b=document.createElement("b"); b.textContent=dateLabel(p);
+  $("vcap").append(b, document.createTextNode(p.comment||""));
+  $("viewer").hidden=false; $("vclose").focus();
+}
+function closeViewer(){ $("viewer").hidden=true; $("vimg").removeAttribute("src"); }
+$("vclose").onclick=closeViewer;
+$("viewer").addEventListener("click",e=>{ if(e.target.id==="viewer") closeViewer(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape" && !$("viewer").hidden) closeViewer(); });
+
+// ---------- 読み込み ----------
+async function load(){
+  try{
+    const r=await fetch("/api/photos?v="+ver,{cache:"no-store"});
+    if(!r.ok) throw 0;
+    const d=await r.json();
+    $("status").textContent="写真が届くと自動で年表に追加されます";
+    if(d.same) return;
+    ver=d.ver; photos=d.photos; approval=d.approval!==false; setNote();
+    render();
+  }catch(e){
+    if(ver===-1 && !demo) startDemo();
+    else if(!demo) $("status").textContent="接続が不安定です。自動でつなぎ直しています…";
+  }
+}
+function loop(){ clearTimeout(timer); if(demo) return; timer=setTimeout(async()=>{ if(!document.hidden) await load(); loop(); }, 8000); }
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden && !demo){ load(); loop(); } });
+function setNote(){
+  $("pnote").textContent= approval
+    ? "自分で撮った写真や、みんなに見せても大丈夫な写真を送ってね。届いた写真は確認してから年表に載ります。"
+    : "自分で撮った写真や、みんなに見せても大丈夫な写真を送ってね。";
+}
+
+// ---------- プレビュー用のサンプル ----------
+function sampleImg(i,size){
+  const c=document.createElement("canvas"); c.width=c.height=size;
+  const g=c.getContext("2d"); const cols=[["#f6a5c0","#c39bea"],["#ffd1a6","#f08a3c"],["#a8e6cf","#5b7fe0"],["#ffc8dd","#e8517f"],["#cdb4db","#a35fd1"]][i%5];
+  const gr=g.createLinearGradient(0,0,size,size); gr.addColorStop(0,cols[0]); gr.addColorStop(1,cols[1]);
+  g.fillStyle=gr; g.fillRect(0,0,size,size);
+  g.fillStyle="rgba(255,255,255,.85)"; g.font=`bold ${Math.round(size*0.16)}px sans-serif`; g.textAlign="center"; g.textBaseline="middle";
+  g.fillText("SAMPLE",size/2,size/2);
+  return c.toDataURL("image/png");
+}
+function startDemo(){
+  demo=true; $("demo").hidden=false; $("status").textContent="プレビュー表示（サンプル）";
+  const S=[["2025-11-02",1,"23歳スタート！"],["2025-12",0,"冬のイベント"],["2026-01-01",1,"あけおめ配信"],["2026-01-18",1,""],["2026-02",0,"バレンタインの衣装"],["2026-03-14",1,"ワンマンライブ！"],["2026-03-20",1,"ツアー初日"],["2026-05",0,"新曲MV"],["2026-07-07",1,"七夕"],["2026-08-15",1,"夏フェス"],["2026-10",0,"ハロウィン"],["2026-11-01",1,"23歳ラストの日"]];
+  photos=S.map(([d,k,c],i)=>({id:"s"+i,d,dayKnown:!!k,comment:c,thumbUrl:sampleImg(i,160),fullUrl:sampleImg(i,600)}));
+  render();
+}
+
+// ---------- 送るフォーム ----------
+// ---------- カレンダー（2025.11.02〜2026.11.01 だけ選べる） ----------
+const CAL_FIRST=[2025,11], CAL_LAST=[2026,11];
+let calY, calM, selMonth="", selDay="";
+function calStart(){
+  // 今日の月から始める（期間の外なら端の月）
+  const n=new Date(Date.now()+9*3600e3); let y=n.getUTCFullYear(), m=n.getUTCMonth()+1;
+  const key=y*12+m, lo=CAL_FIRST[0]*12+CAL_FIRST[1], hi=CAL_LAST[0]*12+CAL_LAST[1];
+  if(key<lo){y=CAL_FIRST[0];m=CAL_FIRST[1];} if(key>hi){y=CAL_LAST[0];m=CAL_LAST[1];}
+  calY=y; calM=m;
+}
+const pad2=n=>String(n).padStart(2,"0");
+function drawCal(){
+  const ym=`${calY}-${pad2(calM)}`;
+  $("calTitle").textContent=`${calY}年${calM}月`;
+  $("calPrev").disabled=(calY*12+calM)<=(CAL_FIRST[0]*12+CAL_FIRST[1]);
+  $("calNext").disabled=(calY*12+calM)>=(CAL_LAST[0]*12+CAL_LAST[1]);
+  const first=new Date(Date.UTC(calY,calM-1,1)).getUTCDay();
+  const last=new Date(Date.UTC(calY,calM,0)).getUTCDate();
+  const nowJ=new Date(Date.now()+9*3600e3), todayIso=`${nowJ.getUTCFullYear()}-${pad2(nowJ.getUTCMonth()+1)}-${pad2(nowJ.getUTCDate())}`;
+  const cells=[];
+  for(let i=0;i<first;i++) cells.push(document.createElement("span"));
+  for(let d=1;d<=last;d++){
+    const iso=`${ym}-${pad2(d)}`;
+    const b=document.createElement("button"); b.type="button"; b.textContent=d;
+    const ok=iso>=FROM && iso<=TO;
+    b.disabled=!ok;
+    b.setAttribute("aria-label",`${calY}年${calM}月${d}日${ok?"":"（えらべません）"}`);
+    if(selMonth===ym && selDay===String(d)){ b.className="sel"; b.setAttribute("aria-pressed","true"); }
+    if(iso===todayIso) b.classList.add("today");
+    b.onclick=()=>{ selMonth=ym; selDay=String(d); drawCal(); };
+    cells.push(b);
+  }
+  $("calGrid").replaceChildren(...cells);
+  const monthOnly=selMonth===ym && !selDay;
+  $("calMonthOnly").setAttribute("aria-pressed",monthOnly);
+  $("calMonthOnly").textContent=monthOnly?`✓ ${calY}年${calM}月（日にちは分からない）`:"日にちは分からない（この月で送る）";
+  const pk=$("calPick");
+  if(selMonth){
+    const [y,m]=selMonth.split("-").map(Number);
+    pk.textContent= selDay?`えらんだ日：${y}.${pad2(m)}.${pad2(+selDay)}`:`えらんだ日：${y}年${m}月ごろ`;
+    pk.className="cal-pick on";
+  }else{ pk.textContent="日付をタップしてね"; pk.className="cal-pick"; }
+}
+$("calPrev").onclick=()=>{ calM--; if(calM<1){calM=12;calY--;} drawCal(); };
+$("calNext").onclick=()=>{ calM++; if(calM>12){calM=1;calY++;} drawCal(); };
+$("calMonthOnly").onclick=()=>{ const ym=`${calY}-${pad2(calM)}`; if(selMonth===ym&&!selDay){ selMonth=""; } else { selMonth=ym; selDay=""; } drawCal(); };
+function resetCal(){ selMonth=""; selDay=""; calStart(); drawCal(); }
+resetCal();
+
+let picked=null;
+$("pfile").addEventListener("change",async()=>{
+  const f=$("pfile").files[0]; picked=null;
+  if(!f) return;
+  $("pvName").textContent="写真を読み込んでいます…";
+  try{
+    picked=await prepare(f);
+    $("pvBox").innerHTML=""; const im=document.createElement("img"); im.src=picked.thumbUrl; im.alt=""; $("pvBox").append(im);
+    $("pvName").textContent="この写真を送ります（タップで変更）";
+  }catch(e){ $("pvName").textContent="この写真は読み込めませんでした。別の写真をえらんでね。"; }
+});
+
+// 写真を小さくしてから送る（大きい写真：長い辺1280px、一覧用：正方形240px）
+async function loadBitmap(file){
+  if(window.createImageBitmap){ try{ return await createImageBitmap(file,{imageOrientation:"from-image"}); }catch(e){} }
+  const url=URL.createObjectURL(file);
+  try{ const im=new Image(); im.src=url; await im.decode(); return im; } finally{ setTimeout(()=>URL.revokeObjectURL(url),1000); }
+}
+function toB64(canvas,q){ return canvas.toDataURL("image/jpeg",q).split(",")[1]; }
+async function prepare(file){
+  const bm=await loadBitmap(file);
+  const w=bm.width, h=bm.height; if(!w||!h) throw 0;
+  const s=Math.min(1,1280/Math.max(w,h));
+  const c=document.createElement("canvas"); c.width=Math.round(w*s); c.height=Math.round(h*s);
+  c.getContext("2d").drawImage(bm,0,0,c.width,c.height);
+  let q=0.82, full=toB64(c,q);
+  while(full.length*0.75>1_150_000 && q>0.5){ q-=0.1; full=toB64(c,q); }
+  const t=document.createElement("canvas"); t.width=t.height=240;
+  const side=Math.min(w,h), sx=(w-side)/2, sy=(h-side)/2;
+  t.getContext("2d").drawImage(bm,sx,sy,side,side,0,0,240,240);
+  const thumb=toB64(t,0.8);
+  return {full,thumb,thumbUrl:"data:image/jpeg;base64,"+thumb};
+}
+
+let sending=false;
+$("pf").addEventListener("submit",async e=>{
+  e.preventDefault();
+  if(sending) return;
+  if(!picked){ $("ph").className="hint"; $("ph").textContent="写真をえらんでね。"; return; }
+  if(!selMonth){ $("ph").className="hint"; $("ph").textContent="いつの写真か、カレンダーで日付をえらんでね。"; return; }
+  sending=true; $("pgo").disabled=true; $("ph").className="hint"; $("ph").textContent="送っています…";
+  const body={month:selMonth,day:selDay,comment:$("pcomment").value.trim(),full:picked.full,thumb:picked.thumb};
+  try{
+    if(demo){
+      photos=[...photos,{id:"l"+Date.now(),d:body.day?`${body.month}-${String(body.day).padStart(2,"0")}`:body.month,dayKnown:!!body.day,comment:body.comment,thumbUrl:picked.thumbUrl,fullUrl:"data:image/jpeg;base64,"+picked.full}];
+      render(); done("プレビューなので保存はされません。"); return;
+    }
+    const r=await fetch("/api/photos",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){ $("ph").textContent=d.error||"送れませんでした。少し待ってからもう一度どうぞ。"; return; }
+    done(d.status==="pending"?"受け取りました！確認したら年表に載ります。":"年表に載りました！");
+    await load();
+  }catch(err){ $("ph").textContent="送れませんでした。通信を確認してもう一度どうぞ。"; }
+  finally{ sending=false; $("pgo").disabled=false; }
+});
+function done(msg){
+  $("ph").className="hint ok"; $("ph").textContent=msg;
+  picked=null; $("pf").reset(); resetCal();
+  $("pvBox").textContent="📷"; $("pvName").textContent="写真をえらぶ";
+}
+
+setNote(); render(); load().then(loop);
+</script>
+</body>
+</html>

@@ -373,6 +373,124 @@ async function ttDiagnose(env, vid) {
   return out;
 }
 
+// ===== 企画④ 23歳のちぃ記録（写真の年表） =====
+// 写真はD1データベースに文字（base64）で保存します。一覧用の小さい写真と、タップで開く大きい写真の2つ。
+const PH_FROM = "2025-11-02", PH_TO = "2026-11-01";   // 23歳の期間
+const PH_COMMENT_MAX = 60;
+const PH_FULL_MAX = 1_300_000;   // 大きい写真の上限（バイト）
+const PH_THUMB_MAX = 160_000;    // 小さい写真の上限（バイト）
+const PH_LIMIT = 400;            // 保存できる写真の数（無料枠の容量に収めるため）
+const PH_WAIT_SEC = 20;          // 同じ人が続けて投稿できるまでの秒数
+const PH_PER_HOUR = 15;          // 同じ人が1時間に投稿できる数
+let phReady = false;
+async function ensurePH(env) {
+  if (phReady) return;
+  await env.DB.batch([
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS photos (id INTEGER PRIMARY KEY AUTOINCREMENT, d TEXT NOT NULL, day_known INTEGER NOT NULL, comment TEXT, at INTEGER NOT NULL, iph TEXT, status TEXT NOT NULL)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS photo_blobs (id INTEGER PRIMARY KEY, thumb TEXT NOT NULL, thumb_type TEXT NOT NULL, full TEXT NOT NULL, full_type TEXT NOT NULL)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_photos_iph ON photos (iph, at)"),
+    env.DB.prepare("INSERT OR IGNORE INTO meta (k, v) VALUES ('ph_ver', 0)"),
+  ]);
+  phReady = true;
+}
+async function phApproval(env) {
+  await ensureSettings(env);
+  const row = await env.DB.prepare("SELECT v FROM settings WHERE k='photo_approval'").first();
+  return row ? row.v !== "off" : true;   // 最初は「承認してから表示」
+}
+function b64Bytes(b64) { try { const s = atob(b64); const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; } catch { return null; } }
+function imgType(u) {
+  if (!u || u.length < 12) return "";
+  if (u[0] === 0xff && u[1] === 0xd8 && u[2] === 0xff) return "image/jpeg";
+  if (u[0] === 0x89 && u[1] === 0x50 && u[2] === 0x4e && u[3] === 0x47) return "image/png";
+  if (u[0] === 0x52 && u[1] === 0x49 && u[2] === 0x46 && u[3] === 0x46 && u[8] === 0x57 && u[9] === 0x45 && u[10] === 0x42 && u[11] === 0x50) return "image/webp";
+  return "";
+}
+function phDate(month, day) {
+  // month: "2026-03" / day: "" or "15"
+  const m = String(month || "").match(/^(\d{4})-(\d{2})$/);
+  if (!m) return null;
+  const y = +m[1], mo = +m[2];
+  if (mo < 1 || mo > 12) return null;
+  const dd = String(day || "").trim();
+  if (!dd) {
+    const ym = `${m[1]}-${m[2]}`;
+    if (ym < PH_FROM.slice(0, 7) || ym > PH_TO.slice(0, 7)) return null;
+    return { d: ym, known: 0 };
+  }
+  const n = +dd;
+  const last = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+  if (!Number.isInteger(n) || n < 1 || n > last) return null;
+  const iso = `${m[1]}-${m[2]}-${String(n).padStart(2, "0")}`;
+  if (iso < PH_FROM || iso > PH_TO) return null;
+  return { d: iso, known: 1 };
+}
+
+async function phPost({ request, env }) {
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "送れませんでした。写真が大きすぎるかもしれません。" }, 400); }
+  const date = phDate(body?.month, body?.day);
+  if (!date) return json({ error: "日付は 2025.11.02〜2026.11.01 の間で選んでね。" }, 400);
+  const comment = String(body?.comment ?? "").replace(/\s+/g, " ").trim();
+  if ([...comment].length > PH_COMMENT_MAX) return json({ error: `ひとことは${PH_COMMENT_MAX}文字までで書いてね。` }, 400);
+  if (comment) {
+    const extra = (env.NG_WORDS || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const lower = comment.toLowerCase();
+    if ([...DEFAULT_NG, ...extra].some((w) => lower.includes(w.toLowerCase()))) return json({ error: "その言葉は投稿できません。" }, 400);
+  }
+  const full = b64Bytes(String(body?.full ?? "")), thumb = b64Bytes(String(body?.thumb ?? ""));
+  const ft = imgType(full), tt = imgType(thumb);
+  if (!ft || !tt) return json({ error: "写真を読み込めませんでした。別の写真で試してみてね。" }, 400);
+  if (full.length > PH_FULL_MAX || thumb.length > PH_THUMB_MAX) return json({ error: "写真が大きすぎます。" }, 400);
+
+  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+  const iph = await sha(ip + (env.ADMIN_KEY || "salt"));
+  const now = Date.now();
+  await ensurePH(env);
+  const recent = await env.DB.prepare("SELECT SUM(at > ?) AS short, COUNT(*) AS hour FROM photos WHERE iph=? AND at > ?")
+    .bind(now - PH_WAIT_SEC * 1000, iph, now - 3600 * 1000).first();
+  if (recent && recent.short > 0) return json({ error: "ちょっと待ってからもう一度どうぞ。" }, 429);
+  if (recent && recent.hour >= PH_PER_HOUR) return json({ error: "たくさん送ってくれてありがとう！ 少し時間をあけてね。" }, 429);
+  const total = await env.DB.prepare("SELECT COUNT(*) AS n FROM photos").first();
+  if (total && total.n >= PH_LIMIT) return json({ error: "写真がいっぱいになりました。たくさんありがとう！" }, 400);
+
+  const status = (await phApproval(env)) ? "pending" : "shown";
+  const ins = await env.DB.prepare("INSERT INTO photos (d, day_known, comment, at, iph, status) VALUES (?, ?, ?, ?, ?, ?) RETURNING id")
+    .bind(date.d, date.known, comment, now, iph, status).first();
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO photo_blobs (id, thumb, thumb_type, full, full_type) VALUES (?, ?, ?, ?, ?)")
+      .bind(ins.id, String(body.thumb), tt, String(body.full), ft),
+    env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='ph_ver'"),
+  ]);
+  return json({ ok: true, status });
+}
+
+async function phList({ request, env }) {
+  const url = new URL(request.url);
+  await ensurePH(env);
+  const row = await env.DB.prepare("SELECT v FROM meta WHERE k='ph_ver'").first();
+  const ver = row ? row.v : 0;
+  if (Number(url.searchParams.get("v") ?? -1) === ver) return json({ ver, same: true });
+  const { results } = await env.DB.prepare("SELECT id, d, day_known, comment FROM photos WHERE status='shown' ORDER BY d ASC, id ASC LIMIT 1000").all();
+  return json({ ver, from: PH_FROM, to: PH_TO, approval: await phApproval(env), photos: results.map((r) => ({ id: r.id, d: r.d, dayKnown: !!r.day_known, comment: r.comment || "" })) });
+}
+
+async function phImage({ request, env }) {
+  const url = new URL(request.url);
+  const id = Number(url.searchParams.get("id"));
+  const size = url.searchParams.get("s") === "full" ? "full" : "thumb";
+  if (!id) return new Response("", { status: 404 });
+  await ensurePH(env);
+  const meta = await env.DB.prepare("SELECT status FROM photos WHERE id=?").bind(id).first();
+  if (!meta) return new Response("", { status: 404 });
+  const shown = meta.status === "shown";
+  if (!shown && !(await isPreviewer(request, env))) return new Response("", { status: 404 });
+  const b = await env.DB.prepare(`SELECT ${size} AS data, ${size}_type AS type FROM photo_blobs WHERE id=?`).bind(id).first();
+  const bytes = b && b64Bytes(b.data);
+  if (!bytes) return new Response("", { status: 404 });
+  return new Response(bytes, { headers: { "content-type": b.type, "cache-control": shown ? "public, max-age=86400" : "private, no-store" } });
+}
+
 // ===== 生誕企画のリスト =====
 // 並び順がそのまま「企画①②③…」の番号になります。
 // open: true は最初から公開。false は管理ページで「公開する」を押すまで COMING SOON 表示。
@@ -383,7 +501,7 @@ const PROJECTS = [
   { id: "map", title: "聖ちぃ巡礼マップ", desc: "ちぃちゃんの足跡をめぐろう🐾", href: "https://seichii-map.pages.dev", external: true, open: true },
   { id: "kikaku2", title: "ちぃちゃんの好きなところ", desc: "ちぃちゃんの好きなところを教えて💘", href: "/kikaku2", page: "kikaku2", open: false, soon: "10/27公開予定" },
   { id: "kikaku3", title: "ちぃちゃんの推しTikTok", desc: "お気に入りのTikTokを教えて🎬", href: "/kikaku3", page: "kikaku3", open: false, soon: "10/28公開予定", showAfter: "kikaku2" },
-  { id: "kikaku4", title: "（企画④・内容は準備中）", desc: "", href: "", open: false, soon: "10/29公開予定", showAfter: "kikaku3" },
+  { id: "kikaku4", title: "23歳のちぃ記録", desc: "23歳のちぃちゃんの1年を振り返ろう🗓️", href: "/kikaku4", page: "kikaku4", open: false, soon: "10/29公開予定", showAfter: "kikaku3" },
 ];
 
 let projectsReady = false;
@@ -474,6 +592,34 @@ async function adminPost({ request, env }) {
         .bind(pid, body.open ? 1 : 0).run();
       return json({ ok: true });
     }
+    case "photo_list": {
+      await ensurePH(env);
+      const { results } = await env.DB.prepare("SELECT id, d, day_known, comment, at, status FROM photos ORDER BY id DESC LIMIT 1000").all();
+      return await withPreviewCookie(json({ items: results, approval: await phApproval(env), limit: PH_LIMIT }), env);
+    }
+    case "photo_status": {
+      await ensurePH(env);
+      const st = ["shown", "hidden", "pending"].includes(body.status) ? body.status : "hidden";
+      await env.DB.batch([
+        env.DB.prepare("UPDATE photos SET status=? WHERE id=?").bind(st, id),
+        env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='ph_ver'"),
+      ]);
+      return json({ ok: true });
+    }
+    case "photo_delete": {
+      await ensurePH(env);
+      await env.DB.batch([
+        env.DB.prepare("DELETE FROM photos WHERE id=?").bind(id),
+        env.DB.prepare("DELETE FROM photo_blobs WHERE id=?").bind(id),
+        env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='ph_ver'"),
+      ]);
+      return json({ ok: true });
+    }
+    case "photo_approval": {
+      await ensureSettings(env);
+      await env.DB.prepare("INSERT INTO settings (k, v) VALUES ('photo_approval', ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(body.on ? "on" : "off").run();
+      return json({ ok: true, approval: !!body.on });
+    }
     case "tiktok_list": {
       await ensureTT(env);
       const { results } = await env.DB.prepare("SELECT id, cat, vid, title, comment, at, hidden FROM tiktok ORDER BY id DESC LIMIT 1000").all();
@@ -537,6 +683,12 @@ export default {
         return json({ error: "method not allowed" }, 405);
       }
       if (url.pathname === "/api/projects") return await projectsGet(c);
+      if (url.pathname === "/api/photos") {
+        if (request.method === "GET") return await phList(c);
+        if (request.method === "POST") return await phPost(c);
+        return json({ error: "method not allowed" }, 405);
+      }
+      if (url.pathname === "/api/photos/img") return await phImage(c);
       if (url.pathname === "/api/tiktok") {
         if (request.method === "GET") return await ttGet(c);
         if (request.method === "POST") return await ttPost(c);
