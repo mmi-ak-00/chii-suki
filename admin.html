@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
-<title>好きなところ 管理</title>
+<title>ちぃむみーてぃんぐ2026 管理</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@800&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
 <style>
 :root{--bg:#fff7f9;--surface:#fff;--fg:#3b2a33;--muted:#8a7480;--line:#f1d9e2;--accent:#e8517f;--ink:#fff;--warn:#c0392b}
@@ -72,17 +72,18 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .cnt{display:inline-block;margin-left:6px;min-width:20px;padding:0 6px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--fg);font-size:12px;line-height:18px;font-variant-numeric:tabular-nums;text-align:center}
 .cnt:empty{display:none}
 .cnt.wait{background:var(--accent);border-color:var(--accent);color:var(--ink)}
+.nb{white-space:nowrap}
 .tag{font-size:12px;border-radius:999px;padding:1px 8px;background:var(--line)}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>好きなところ 管理ページ</h1>
+  <h1>ちぃむみーてぃんぐ2026 <span class="nb">管理ページ</span></h1>
   <form id="login">
     <input id="key" type="password" placeholder="管理用の合言葉" autocomplete="current-password" aria-label="管理用の合言葉">
     <button type="submit">ひらく</button>
   </form>
-  <p class="msg" id="msg">合言葉を入れると投稿の一覧が出ます。「かくす」にした投稿はみんなの画面から消えます。</p>
+  <p class="msg" id="msg">合言葉を入れると、管理ページが開きます。</p>
   <div class="tabs" id="tabs" role="tablist" hidden>
     <button role="tab" data-tab="projects" aria-selected="true">企画<span class="cnt" id="c-projects"></span></button>
     <button role="tab" data-tab="posts" aria-selected="false">ひとこと<span class="cnt" id="c-posts"></span></button>
@@ -119,7 +120,7 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
     <p class="msg" id="pmsg">「公開する」を押した企画だけがトップに表示されます。公開前の企画は「COMING SOON」と番号だけが出ます。「プレビューで見る」から、公開前のページをあなただけ確認できます。</p>
     <ul id="projects"></ul>
   </section>
-  <div id="postsView" style="display:flex;flex-direction:column;gap:16px">
+  <div id="postsView" hidden style="display:flex;flex-direction:column;gap:16px">
   <details class="wfold" id="wordsView">
     <summary>ワードクラウドを手直しする</summary>
     <div class="wbody">
