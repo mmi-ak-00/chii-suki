@@ -29,8 +29,22 @@ async function postsGet({ request, env }) {
     .prepare("SELECT id, text, at FROM posts WHERE hidden=0 ORDER BY id DESC LIMIT ?")
     .bind(LIST_LIMIT)
     .all();
-  return json({ ver, posts: results });
+  return json({ ver, posts: results, rules: await cloudRules(env) });
 }
+
+// ワードクラウドの手直し設定（管理ページで決める「出さない言葉」「まとめる言葉」）
+let settingsReady = false;
+async function ensureSettings(env) {
+  if (settingsReady) return;
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT NOT NULL)").run();
+  settingsReady = true;
+}
+async function cloudRules(env) {
+  await ensureSettings(env);
+  const row = await env.DB.prepare("SELECT v FROM settings WHERE k='cloud_rules'").first();
+  try { const r = JSON.parse(row?.v || "{}"); return { hide: r.hide || [], merge: r.merge || [] }; } catch { return { hide: [], merge: [] }; }
+}
+function cleanWord(s) { return String(s ?? "").normalize("NFKC").replace(/\s+/g, " ").trim().slice(0, 30); }
 
 async function postsPost({ request, env }) {
   let body;
@@ -485,6 +499,22 @@ async function adminPost({ request, env }) {
         env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='tt_ver'"),
       ]);
       return json({ ok: true });
+    case "get_cloud_rules":
+      return json({ rules: await cloudRules(env) });
+    case "set_cloud_rules": {
+      const hide = [...new Set((Array.isArray(body.hide) ? body.hide : []).map(cleanWord).filter(Boolean))].slice(0, 300);
+      const seen = new Set();
+      const merge = (Array.isArray(body.merge) ? body.merge : [])
+        .map((p) => [cleanWord(p?.[0]), cleanWord(p?.[1])])
+        .filter(([a, b]) => a && b && a !== b && !seen.has(a) && seen.add(a))
+        .slice(0, 300);
+      await ensureSettings(env);
+      await env.DB.batch([
+        env.DB.prepare("INSERT INTO settings (k, v) VALUES ('cloud_rules', ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(JSON.stringify({ hide, merge })),
+        bump,
+      ]);
+      return json({ ok: true, rules: { hide, merge } });
+    }
     case "delete":
       await env.DB.batch([env.DB.prepare("DELETE FROM posts WHERE id=?").bind(id), bump]);
       return json({ ok: true });

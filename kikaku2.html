@@ -159,35 +159,11 @@ footer{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
   </section>
   <footer>※ファンによる非公式サイトです</footer>
 </div>
+<script src="words.js"></script>
 <script>
 const $ = id => document.getElementById(id);
-const STOP = new Set(["ちぃ","ちゃん","ちぃちゃん","ところ","とこ","好き","すき","大好き","だいすき","こと","もの","感じ","とか","など","です","ます","ある","いる","する","なる","いい","よい","とても","すごく","すごい","めっちゃ","本当","ほんと","ほんとう","全部","ぜんぶ","あと","その","この","あの","それ","これ","みたい","よう","くれる","てる","ている"]);
-const seg = (typeof Intl!=="undefined" && Intl.Segmenter) ? new Intl.Segmenter("ja",{granularity:"word"}) : null;
-
-function norm(s){return s.normalize("NFKC").toLowerCase().replace(/[ー〜~]+$/,"").trim();}
-// ひらがなだけの1〜2文字（助詞など）は除外
-const isParticle = w => /^[぀-ゟ]{1,2}$/.test(w);
-
-function wordsOf(text){
-  const t = norm(text);
-  let parts = [];
-  if(seg){ for(const s of seg.segment(t)) if(s.isWordLike) parts.push(s.segment); }
-  else parts = t.split(/[\s、。！？!?,.]+/);
-  const out = new Set();
-  for(const p of parts){
-    const w = norm(p);
-    if(!w || STOP.has(w) || isParticle(w)) continue;
-    if(w.length < 2 && !/[一-鿿]/.test(w)) continue;
-    out.add(w);
-  }
-  // 短い投稿は投稿全体もひとつの言葉として数える
-  const whole = t.replace(/[!?。、.,\s]+$/,"").replace(/(が|の)?(好き|すき|大好き)(なところ|なとこ|です|！|!)*$/,"").replace(/(な|の)?(ところ|とこ)$/,"").trim();
-  if(whole && whole.length<=10 && !STOP.has(whole) && !out.has(whole) && out.size>1) out.add(whole);
-  if(out.size===0 && whole) out.add(whole);
-  return [...out];
-}
-
 let posts = [];        // {id,text,at}
+let rules = { hide: [], merge: [] };  // 管理ページで決めた「出さない言葉」「まとめる言葉」
 let shownWords = new Set();
 let shownPosts = new Set();
 const COLORS = ["--w1","--w2","--w3","--w4","--w5"];
@@ -195,13 +171,7 @@ function hash(s){let h=0;for(const c of s)h=(h*31+c.codePointAt(0))|0;return Mat
 
 function render(){
   // ワードクラウド
-  const freq = new Map();
-  for(const p of posts) for(const w of wordsOf(p.text)) freq.set(w,(freq.get(w)||0)+1);
-  // 片方がもう片方を含む似た言葉（例:「笑顔」と「笑顔がかわいい」）は短い方にも数を足す
-  const keys=[...freq.keys()];
-  const score=new Map(freq);
-  for(const a of keys) for(const b of keys) if(a!==b && a.length>=2 && b.includes(a)) score.set(a,score.get(a)+freq.get(b)*0.5);
-  const items=[...score.entries()].sort((x,y)=>y[1]-x[1]).slice(0,80);
+  const { items, freq } = ChiiWords.count(posts, rules);
   const cloud=$("cloud");
   if(!items.length){cloud.innerHTML='<p class="empty">まだ投稿がありません。<br>最初の「好き」を書いてみてね。</p>';}
   else{
@@ -245,7 +215,7 @@ async function load(){
     const d=await r.json();
     $("status").textContent="リアルタイムで更新中";
     if(d.same) return;
-    ver=d.ver; posts=d.posts.map(p=>({id:String(p.id),text:p.text,at:p.at})); render();
+    ver=d.ver; posts=d.posts.map(p=>({id:String(p.id),text:p.text,at:p.at})); if(d.rules) rules=d.rules; render();
   }catch(e){
     if(ver===-1 && !demo){ startDemo(); }
     else if(!demo){ $("status").textContent="接続が不安定です。自動でつなぎ直しています…"; }

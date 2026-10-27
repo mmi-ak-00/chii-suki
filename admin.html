@@ -25,8 +25,8 @@ button.del{background:transparent;color:var(--warn);border:1px solid var(--warn)
 ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 li{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 li.hid{opacity:.55}
-.tabs{display:flex;gap:6px;border-bottom:2px solid var(--line)}
-.tabs button{background:transparent;color:var(--muted);border-radius:10px 10px 0 0;padding:8px 14px}
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.tabs button{background:transparent;color:var(--muted);border-radius:10px 10px 0 0;padding:8px 12px;white-space:nowrap;flex:none}
 .tabs button[aria-selected="true"]{background:var(--line);color:var(--fg)}
 .letter{flex-direction:column;align-items:stretch}
 .letter .who{font-weight:700}
@@ -40,6 +40,19 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .pj .st.on{background:var(--accent);color:var(--ink)}
 .pj .st.off{background:var(--line);color:var(--muted)}
 .pv{font-weight:700;font-size:14px;color:var(--accent)}
+.wbox{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.wh{font-family:"M PLUS Rounded 1c",system-ui,sans-serif;font-size:16px;margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:2px 4px 2px 12px;font-size:14px}
+.chip .w{background:none;border:0;padding:0;color:var(--fg);font:inherit;font-weight:700;cursor:pointer}
+.chip .n{font-size:11px;color:var(--muted);margin-left:2px;font-variant-numeric:tabular-nums}
+.chip .x{background:none;border:0;color:var(--muted);font-size:16px;line-height:1;padding:2px 8px;cursor:pointer}
+.chip.off{padding-right:12px}
+.mrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mrow input{flex:1 1 100px;min-width:0}
+.rlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.rlist li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 10px;border-radius:10px;background:var(--bg)}
+.rlist li span{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
 .tag{font-size:12px;border-radius:999px;padding:1px 8px;background:var(--line)}
 </style>
 </head>
@@ -56,6 +69,7 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
     <button role="tab" data-tab="letters" aria-selected="false">メッセージ</button>
     <button role="tab" data-tab="projects" aria-selected="false">企画</button>
     <button role="tab" data-tab="tiktok" aria-selected="false">TikTok</button>
+    <button role="tab" data-tab="words" aria-selected="false">ワード</button>
   </div>
   <section id="lettersView" hidden style="display:flex;flex-direction:column;gap:12px">
     <p class="msg" id="lmsg"></p>
@@ -65,6 +79,32 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
     </div>
     <textarea id="copyout" hidden readonly aria-label="コピー用テキスト"></textarea>
     <ul id="letters"></ul>
+  </section>
+  <section id="wordsView" hidden style="display:flex;flex-direction:column;gap:14px">
+    <p class="msg" id="wmsg">企画②のワードクラウドを手直しできます。変えるとすぐ、みんなの画面にも反映されます。</p>
+    <div class="wbox">
+      <h2 class="wh">いま出ている言葉</h2>
+      <p class="m">言葉を押すと、下の「まとめる」の左の欄に入ります。「×」でワードクラウドに出さなくなります。</p>
+      <div class="chips" id="wnow"></div>
+    </div>
+    <div class="wbox">
+      <h2 class="wh">同じ言葉としてまとめる</h2>
+      <form id="mf" class="mrow" autocomplete="off">
+        <input id="mfrom" placeholder="例：可愛い" aria-label="まとめる言葉">
+        <span>→</span>
+        <input id="mto" placeholder="例：かわいい" aria-label="まとめた後の言葉">
+        <button type="submit">まとめる</button>
+      </form>
+      <ul class="rlist" id="mlist"></ul>
+    </div>
+    <div class="wbox">
+      <h2 class="wh">ワードクラウドに出さない言葉</h2>
+      <form id="hf" class="mrow" autocomplete="off">
+        <input id="hword" placeholder="例：家" aria-label="出さない言葉">
+        <button type="submit">出さない</button>
+      </form>
+      <div class="chips" id="hlist"></div>
+    </div>
   </section>
   <section id="tiktokView" hidden style="display:flex;flex-direction:column;gap:12px">
     <p class="msg" id="tmsg"></p>
@@ -84,6 +124,7 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
   <ul id="list"></ul>
   </div>
 </div>
+<script src="words.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 let key="", rows=[], filter="all", pendingDel=null;
@@ -167,11 +208,12 @@ $("tabs").addEventListener("click",e=>{
   const b=e.target.closest("[data-tab]"); if(!b) return;
   for(const x of $("tabs").querySelectorAll("[data-tab]")) x.setAttribute("aria-selected",x===b);
   const tab=b.dataset.tab;
-  $("lettersView").hidden=tab!=="letters"; $("projectsView").hidden=tab!=="projects"; $("tiktokView").hidden=tab!=="tiktok";
+  $("lettersView").hidden=tab!=="letters"; $("projectsView").hidden=tab!=="projects"; $("tiktokView").hidden=tab!=="tiktok"; $("wordsView").hidden=tab!=="words";
   $("postsView").hidden=tab!=="posts"; $("msg").hidden=tab!=="posts";
   if(tab==="letters") loadLetters();
   if(tab==="projects") loadProjects();
   if(tab==="tiktok") loadTT();
+  if(tab==="words") loadWords();
 });
 const NUM="①②③④⑤⑥⑦⑧⑨⑩";
 async function loadProjects(){
@@ -245,6 +287,58 @@ function drawTT(){
   }));
 }
 $("treload").addEventListener("click",loadTT);
+let wrules={hide:[],merge:[]};
+async function loadWords(){
+  try{ const d=await call("get_cloud_rules"); wrules=d.rules; if(!rows.length) await refresh(); drawWords(); }
+  catch(e){ $("wmsg").textContent=e.message; }
+}
+async function saveWords(note){
+  try{ const d=await call("set_cloud_rules",null,{hide:wrules.hide,merge:wrules.merge}); wrules=d.rules; $("wmsg").textContent=note; drawWords(); }
+  catch(e){ $("wmsg").textContent=e.message; }
+}
+function chip(word,n,onWord,onX,xLabel){
+  const c=document.createElement("span"); c.className="chip";
+  const w=document.createElement("button"); w.type="button"; w.className="w"; w.textContent=word; if(onWord) w.onclick=onWord; else w.disabled=true;
+  c.append(w);
+  if(n){ const k=document.createElement("span"); k.className="n"; k.textContent="×"+n; c.append(k); }
+  const x=document.createElement("button"); x.type="button"; x.className="x"; x.textContent=xLabel||"×"; x.setAttribute("aria-label",(xLabel?"もどす：":"出さない：")+word); x.onclick=onX; c.append(x);
+  return c;
+}
+function drawWords(){
+  const visible=rows.filter(r=>!r.hidden).map(r=>({text:r.text}));
+  const {items,freq}=window.ChiiWords?ChiiWords.count(visible,wrules):{items:[],freq:new Map()};
+  $("wnow").replaceChildren(...(items.length?items.map(([w])=>chip(w,freq.get(w),
+    ()=>{ if(!$("mfrom").value) $("mfrom").value=w; else $("mto").value=w; },
+    ()=>{ wrules.hide=[...wrules.hide,w]; saveWords(`「${w}」を出さないようにしました。`); }
+  )):[Object.assign(document.createElement("span"),{className:"m",textContent:"まだ言葉はありません。"})]));
+  $("mlist").replaceChildren(...(wrules.merge.length?wrules.merge.map(([f,t],i)=>{
+    const li=document.createElement("li");
+    const s=document.createElement("span"); s.textContent=`「${f}」→「${t}」`;
+    const b=document.createElement("button"); b.className="sub"; b.textContent="やめる";
+    b.onclick=()=>{ wrules.merge=wrules.merge.filter((_,j)=>j!==i); saveWords(`「${f}」のまとめをやめました。`); };
+    li.append(s,b); return li;
+  }):[Object.assign(document.createElement("li"),{className:"m",textContent:"まだありません。"})]));
+  $("hlist").replaceChildren(...(wrules.hide.length?wrules.hide.map(w=>{
+    const c=chip(w,0,null,()=>{ wrules.hide=wrules.hide.filter(x=>x!==w); saveWords(`「${w}」をまた出すようにしました。`); },"もどす");
+    c.classList.add("off"); return c;
+  }):[Object.assign(document.createElement("span"),{className:"m",textContent:"まだありません。"})]));
+}
+$("mf").addEventListener("submit",e=>{
+  e.preventDefault();
+  const f=$("mfrom").value.trim(), t=$("mto").value.trim();
+  if(!f||!t){ $("wmsg").textContent="左右どちらの欄にも言葉を入れてね。"; return; }
+  if(f===t){ $("wmsg").textContent="ちがう言葉を入れてね。"; return; }
+  wrules.merge=[...wrules.merge.filter(([a])=>a!==f),[f,t]];
+  $("mfrom").value=""; $("mto").value="";
+  saveWords(`「${f}」を「${t}」にまとめました。`);
+});
+$("hf").addEventListener("submit",e=>{
+  e.preventDefault();
+  const w=$("hword").value.trim(); if(!w) return;
+  if(!wrules.hide.includes(w)) wrules.hide=[...wrules.hide,w];
+  $("hword").value="";
+  saveWords(`「${w}」を出さないようにしました。`);
+});
 if(key) refresh();
 </script>
 </body>
