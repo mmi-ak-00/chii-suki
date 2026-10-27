@@ -25,9 +25,10 @@ button.del{background:transparent;color:var(--warn);border:1px solid var(--warn)
 ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 li{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 li.hid{opacity:.55}
-.tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);overflow-x:auto;scrollbar-width:none}
-.tabs button{background:transparent;color:var(--muted);border-radius:10px 10px 0 0;padding:8px 12px;white-space:nowrap;flex:none}
-.tabs button[aria-selected="true"]{background:var(--line);color:var(--fg)}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tabs button{background:var(--surface);color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:6px 12px;white-space:nowrap}
+.tabs button[aria-selected="true"]{background:var(--fg);border-color:var(--fg);color:var(--bg)}
+.tabs button[aria-selected="true"] .cnt:not(.wait){background:var(--bg);border-color:var(--bg);color:var(--fg)}
 .letter{flex-direction:column;align-items:stretch}
 .letter .who{font-weight:700}
 .letter .body{white-space:pre-wrap;overflow-wrap:anywhere}
@@ -40,6 +41,11 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .pj .st.on{background:var(--accent);color:var(--ink)}
 .pj .st.off{background:var(--line);color:var(--muted)}
 .pv{font-weight:700;font-size:14px;color:var(--accent)}
+.wfold{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px 12px}
+.wfold summary{cursor:pointer;font-family:"M PLUS Rounded 1c",system-ui,sans-serif;font-weight:800;padding:8px 0}
+.wfold[open] summary{border-bottom:1px solid var(--line);margin-bottom:10px}
+.wbody{display:flex;flex-direction:column;gap:12px;padding-bottom:12px}
+.wbody .wbox{background:var(--bg)}
 .wbox{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px}
 .wh{font-family:"M PLUS Rounded 1c",system-ui,sans-serif;font-size:16px;margin:0}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
@@ -63,6 +69,9 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .phgrid .pb{display:flex;gap:6px;flex-wrap:wrap}
 .phgrid .pb button{padding:6px 10px;font-size:13px}
 .filters button[data-pf][aria-pressed="true"]{outline:2px solid var(--fg)}
+.cnt{display:inline-block;margin-left:6px;min-width:20px;padding:0 6px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--fg);font-size:12px;line-height:18px;font-variant-numeric:tabular-nums;text-align:center}
+.cnt:empty{display:none}
+.cnt.wait{background:var(--accent);border-color:var(--accent);color:var(--ink)}
 .tag{font-size:12px;border-radius:999px;padding:1px 8px;background:var(--line)}
 </style>
 </head>
@@ -75,12 +84,11 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
   </form>
   <p class="msg" id="msg">合言葉を入れると投稿の一覧が出ます。「かくす」にした投稿はみんなの画面から消えます。</p>
   <div class="tabs" id="tabs" role="tablist" hidden>
-    <button role="tab" data-tab="posts" aria-selected="true">ひとこと</button>
-    <button role="tab" data-tab="letters" aria-selected="false">メッセージ</button>
-    <button role="tab" data-tab="projects" aria-selected="false">企画</button>
-    <button role="tab" data-tab="tiktok" aria-selected="false">TikTok</button>
-    <button role="tab" data-tab="words" aria-selected="false">ワード</button>
-    <button role="tab" data-tab="photos" aria-selected="false">写真</button>
+    <button role="tab" data-tab="projects" aria-selected="true">企画<span class="cnt" id="c-projects"></span></button>
+    <button role="tab" data-tab="posts" aria-selected="false">ひとこと<span class="cnt" id="c-posts"></span></button>
+    <button role="tab" data-tab="letters" aria-selected="false">メッセージ<span class="cnt" id="c-letters"></span></button>
+    <button role="tab" data-tab="tiktok" aria-selected="false">TikTok<span class="cnt" id="c-tiktok"></span></button>
+    <button role="tab" data-tab="photos" aria-selected="false">写真<span class="cnt" id="c-photos"></span><span class="cnt wait" id="c-wait" hidden></span></button>
   </div>
   <section id="lettersView" hidden style="display:flex;flex-direction:column;gap:12px">
     <p class="msg" id="lmsg"></p>
@@ -102,7 +110,19 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
     </div>
     <ul class="phgrid" id="phlist"></ul>
   </section>
-  <section id="wordsView" hidden style="display:flex;flex-direction:column;gap:14px">
+  <section id="tiktokView" hidden style="display:flex;flex-direction:column;gap:12px">
+    <p class="msg" id="tmsg"></p>
+    <div class="filters"><button class="sub" id="treload" type="button">更新</button></div>
+    <ul id="tlist"></ul>
+  </section>
+  <section id="projectsView" hidden style="display:flex;flex-direction:column;gap:12px">
+    <p class="msg" id="pmsg">「公開する」を押した企画だけがトップに表示されます。公開前の企画は「COMING SOON」と番号だけが出ます。「プレビューで見る」から、公開前のページをあなただけ確認できます。</p>
+    <ul id="projects"></ul>
+  </section>
+  <div id="postsView" style="display:flex;flex-direction:column;gap:16px">
+  <details class="wfold" id="wordsView">
+    <summary>ワードクラウドを手直しする</summary>
+    <div class="wbody">
     <p class="msg" id="wmsg">企画②のワードクラウドを手直しできます。変えるとすぐ、みんなの画面にも反映されます。</p>
     <div class="wbox">
       <h2 class="wh">いま出ている言葉</h2>
@@ -127,17 +147,8 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
       </form>
       <div class="chips" id="hlist"></div>
     </div>
-  </section>
-  <section id="tiktokView" hidden style="display:flex;flex-direction:column;gap:12px">
-    <p class="msg" id="tmsg"></p>
-    <div class="filters"><button class="sub" id="treload" type="button">更新</button></div>
-    <ul id="tlist"></ul>
-  </section>
-  <section id="projectsView" hidden style="display:flex;flex-direction:column;gap:12px">
-    <p class="msg" id="pmsg">「公開する」を押した企画だけがトップに表示されます。公開前の企画は「COMING SOON」と番号だけが出ます。「プレビューで見る」から、公開前のページをあなただけ確認できます。</p>
-    <ul id="projects"></ul>
-  </section>
-  <div id="postsView" style="display:flex;flex-direction:column;gap:16px">
+    </div>
+  </details>
   <div class="filters" id="filters" hidden>
     <button class="sub" data-f="all" aria-pressed="true">すべて</button>
     <button class="sub" data-f="hidden" aria-pressed="false">かくした投稿</button>
@@ -161,9 +172,12 @@ async function refresh(){
   try{
     const d=await call("list"); rows=d.posts;
     try{ sessionStorage.setItem("k",key); }catch(e){}
+    const first=$("tabs").hidden;
     $("login").hidden=true; $("filters").hidden=false; $("tabs").hidden=false;
+    if(first){ $("postsView").prepend($("msg")); $("tabs").querySelector('[data-tab="projects"]').click(); loadCounts(); setInterval(()=>{ if(!document.hidden) loadCounts(); },30000); }
     $("msg").textContent=`${rows.length}件の投稿（かくしている投稿 ${rows.filter(r=>r.hidden).length}件）`;
     draw();
+    if(window.wrulesLoaded) drawWords();
   }catch(e){ $("msg").textContent=e.message; $("login").hidden=false; }
 }
 function draw(){
@@ -230,13 +244,14 @@ $("tabs").addEventListener("click",e=>{
   const b=e.target.closest("[data-tab]"); if(!b) return;
   for(const x of $("tabs").querySelectorAll("[data-tab]")) x.setAttribute("aria-selected",x===b);
   const tab=b.dataset.tab;
-  $("lettersView").hidden=tab!=="letters"; $("projectsView").hidden=tab!=="projects"; $("tiktokView").hidden=tab!=="tiktok"; $("wordsView").hidden=tab!=="words"; $("photosView").hidden=tab!=="photos";
-  $("postsView").hidden=tab!=="posts"; $("msg").hidden=tab!=="posts";
+  $("lettersView").hidden=tab!=="letters"; $("projectsView").hidden=tab!=="projects"; $("tiktokView").hidden=tab!=="tiktok"; $("photosView").hidden=tab!=="photos";
+  $("postsView").hidden=tab!=="posts";
   if(tab==="letters") loadLetters();
   if(tab==="projects") loadProjects();
   if(tab==="tiktok") loadTT();
-  if(tab==="words") loadWords();
+  if(tab==="posts") loadWords();
   if(tab==="photos") loadPhotos();
+  loadCounts();
 });
 const NUM="①②③④⑤⑥⑦⑧⑨⑩";
 async function loadProjects(){
@@ -312,7 +327,7 @@ function drawTT(){
 $("treload").addEventListener("click",loadTT);
 let wrules={hide:[],merge:[]};
 async function loadWords(){
-  try{ const d=await call("get_cloud_rules"); wrules=d.rules; if(!rows.length) await refresh(); drawWords(); }
+  try{ const d=await call("get_cloud_rules"); wrules=d.rules; window.wrulesLoaded=true; drawWords(); }
   catch(e){ $("wmsg").textContent=e.message; }
 }
 async function saveWords(note){
@@ -402,6 +417,15 @@ $("phAppr").addEventListener("change",async()=>{
   try{ await call("photo_approval",null,{on:$("phAppr").checked}); $("phmsg").textContent=$("phAppr").checked?"これから届く写真は、あなたが「載せる」を押すまで年表に出ません。":"これから届く写真は、すぐ年表に載ります。"; }
   catch(e){ $("phmsg").textContent=e.message; }
 });
+async function loadCounts(){
+  try{
+    const c=await call("counts");
+    $("c-projects").textContent=`${c.projects}/${c.projectsTotal}`;
+    $("c-posts").textContent=c.posts; $("c-letters").textContent=c.letters;
+    $("c-tiktok").textContent=c.tiktok; $("c-photos").textContent=c.photos;
+    $("c-wait").hidden=!c.photosPending; $("c-wait").textContent=c.photosPending?`待ち${c.photosPending}`:"";
+  }catch(e){}
+}
 if(key) refresh();
 </script>
 </body>

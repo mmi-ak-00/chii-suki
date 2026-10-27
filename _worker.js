@@ -592,6 +592,20 @@ async function adminPost({ request, env }) {
         .bind(pid, body.open ? 1 : 0).run();
       return json({ ok: true });
     }
+    case "counts": {
+      // 管理ページのタブに出す件数
+      await ensureLetters(env); await ensureTT(env); await ensurePH(env);
+      const one = async (q) => (await env.DB.prepare(q).first())?.n || 0;
+      const projects = await projectStates(env);
+      return json({
+        projects: projects.filter((p) => p.open).length, projectsTotal: projects.length,
+        posts: await one("SELECT COUNT(*) AS n FROM posts"),
+        letters: await one("SELECT COUNT(*) AS n FROM letters"),
+        tiktok: await one("SELECT COUNT(*) AS n FROM tiktok"),
+        photos: await one("SELECT COUNT(*) AS n FROM photos"),
+        photosPending: await one("SELECT COUNT(*) AS n FROM photos WHERE status='pending'"),
+      });
+    }
     case "photo_list": {
       await ensurePH(env);
       const { results } = await env.DB.prepare("SELECT id, d, day_known, comment, at, status FROM photos ORDER BY id DESC LIMIT 1000").all();
