@@ -112,6 +112,11 @@ h1 span{color:var(--accent)}
 .drop .tx b{display:block;color:var(--fg);font-family:var(--display)}
 .cal{background:var(--bg);border:2px solid var(--line);border-radius:14px;padding:16px 12px 12px;display:flex;flex-direction:column;gap:8px}
 .cal-nav{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cal-ym{position:relative;display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;background:var(--surface);border:2px solid var(--line);cursor:pointer}
+.cal-ym:focus-within{border-color:var(--accent)}
+.cal-ym select{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px;cursor:pointer;appearance:none}
+.cal-ym .caret{font-size:12px;color:var(--accent)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .cal-nav b{font-family:var(--display);font-size:17px;font-variant-numeric:tabular-nums}
 .cal-nav button{width:40px;height:40px;border-radius:50%;border:2px solid var(--line);background:var(--surface);color:var(--fg);font-size:22px;line-height:1;cursor:pointer}
 .cal-nav button:disabled{opacity:.3;cursor:default}
@@ -177,7 +182,11 @@ footer{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
         <div class="cal" role="group" aria-labelledby="calLab">
           <div class="cal-nav">
             <button type="button" id="calPrev" aria-label="前の月">‹</button>
-            <b id="calTitle" aria-live="polite"></b>
+            <label class="cal-ym">
+              <span class="sr">年月をえらぶ</span>
+              <select id="calYM" aria-label="年月をえらぶ"></select>
+              <b id="calTitle" aria-hidden="true"></b><span class="caret" aria-hidden="true">▾</span>
+            </label>
             <button type="button" id="calNext" aria-label="次の月">›</button>
           </div>
           <div class="cal-week" aria-hidden="true"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
@@ -400,6 +409,7 @@ const pad2=n=>String(n).padStart(2,"0");
 function drawCal(){
   const ym=`${calY}-${pad2(calM)}`;
   $("calTitle").textContent=`${calY}年${calM}月`;
+  $("calYM").value=ym;
   $("calPrev").disabled=(calY*12+calM)<=(CAL_FIRST[0]*12+CAL_FIRST[1]);
   $("calNext").disabled=(calY*12+calM)>=(CAL_LAST[0]*12+CAL_LAST[1]);
   const first=new Date(Date.UTC(calY,calM-1,1)).getUTCDay();
@@ -432,6 +442,16 @@ function drawCal(){
 $("calPrev").onclick=()=>{ calM--; if(calM<1){calM=12;calY--;} drawCal(); };
 $("calNext").onclick=()=>{ calM++; if(calM>12){calM=1;calY++;} drawCal(); };
 $("calMonthOnly").onclick=()=>{ const ym=`${calY}-${pad2(calM)}`; if(selMonth===ym&&!selDay){ selMonth=""; } else { selMonth=ym; selDay=""; } drawCal(); };
+// 年月をタップすると、くるくる回る選択画面から飛べる
+(function(){
+  const opts=[];
+  for(let y=CAL_FIRST[0],m=CAL_FIRST[1];y*12+m<=CAL_LAST[0]*12+CAL_LAST[1];){
+    opts.push(`<option value="${y}-${pad2(m)}">${y}年${m}月</option>`);
+    m++; if(m>12){m=1;y++;}
+  }
+  $("calYM").innerHTML=opts.join("");
+  $("calYM").addEventListener("change",()=>{ const [y,m]=$("calYM").value.split("-").map(Number); calY=y; calM=m; drawCal(); });
+})();
 function resetCal(){ selMonth=""; selDay=""; calStart(); drawCal(); }
 resetCal();
 

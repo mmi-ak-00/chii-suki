@@ -102,10 +102,10 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
   </section>
   <section id="photosView" hidden style="display:flex;flex-direction:column;gap:12px">
     <p class="msg" id="phmsg"></p>
-    <label class="appr"><input type="checkbox" id="phAppr"> 承認してから年表に載せる（オンのときは「載せる」を押した写真だけが出ます）</label>
+    <label class="appr"><input type="checkbox" id="phAppr"> 承認してから年表に載せる（オフのときは、届いた写真がすぐ年表に載ります。困った写真は「かくす」「消す」で外せます）</label>
     <div class="filters">
-      <button class="sub" data-pf="pending" aria-pressed="true" type="button">確認待ち</button>
-      <button class="sub" data-pf="shown" aria-pressed="false" type="button">載せている</button>
+      <button class="sub" data-pf="shown" aria-pressed="true" type="button">載せている</button>
+      <button class="sub" data-pf="pending" aria-pressed="false" type="button">確認待ち</button>
       <button class="sub" data-pf="hidden" aria-pressed="false" type="button">かくした</button>
       <button class="sub" id="phreload" type="button">更新</button>
     </div>
@@ -378,12 +378,12 @@ $("hf").addEventListener("submit",e=>{
   $("hword").value="";
   saveWords(`「${w}」を出さないようにしました。`);
 });
-let phItems=[], phFilter="pending", pendingP=null;
+let phItems=[], phFilter="shown", pendingP=null;
 async function loadPhotos(){
   try{
     const d=await call("photo_list"); phItems=d.items; $("phAppr").checked=!!d.approval;
     const c=s=>phItems.filter(x=>x.status===s).length;
-    $("phmsg").textContent=`確認待ち ${c("pending")}枚・載せている ${c("shown")}枚・かくした ${c("hidden")}枚（保存できるのは全部で${d.limit}枚まで）`;
+    $("phmsg").textContent=`載せている ${c("shown")}枚・確認待ち ${c("pending")}枚・かくした ${c("hidden")}枚（保存できるのは全部で${d.limit}枚まで）`;
     drawPhotos();
   }catch(e){ $("phmsg").textContent=e.message; }
 }

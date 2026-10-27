@@ -396,7 +396,7 @@ async function ensurePH(env) {
 async function phApproval(env) {
   await ensureSettings(env);
   const row = await env.DB.prepare("SELECT v FROM settings WHERE k='photo_approval'").first();
-  return row ? row.v !== "off" : true;   // 最初は「承認してから表示」
+  return row ? row.v === "on" : false;   // 最初は「承認なしですぐ載る」（管理ページでオンにすると承認制）
 }
 function b64Bytes(b64) { try { const s = atob(b64); const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; } catch { return null; } }
 function imgType(u) {
@@ -464,6 +464,7 @@ async function phPost({ request, env }) {
   ]);
   return json({ ok: true, status });
 }
+
 
 async function phList({ request, env }) {
   const url = new URL(request.url);
