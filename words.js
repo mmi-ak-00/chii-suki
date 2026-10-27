@@ -42,12 +42,40 @@
     const toks = [];
     for (const s of seg.segment(t)) toks.push({ w: s.segment, like: s.isWordLike });
     const out = [];
+    const kind = (c) => /[\u4e00-\u9fff々]/.test(c) ? "k" : /[\u3040-\u309f]/.test(c) ? "h" : /[\u30a0-\u30ff]/.test(c) ? "t" : "x";
+    let run = null;   // 1文字ずつに分けられた言葉を、つなぎ直している途中のもの
     for (let i = 0; i < toks.length; i++) {
       const { w, like } = toks[i];
-      if (!like) { out.push(null); continue; } // 区切り
+      if (!like) { out.push(null); run = null; continue; } // 区切り
+      // 知らない言葉は1文字ずつに分けられてしまうので、同じ種類の文字が続くときはつなぎ直す（ほ・わ・ほ・わ→ほわほわ、女・豹→女豹）
+      if ([...w].length === 1 && run && run.kind === kind(w) && run.kind !== "x") {
+        out[out.length - 1] += w; continue;
+      }
+      if ([...w].length === 1) {
+        const prevTok = i > 0 ? toks[i - 1] : null;
+        const nextTok = toks[i + 1];
+        // 次も同じ種類の1文字なら、つなぎ直しを始める
+        if (nextTok && nextTok.like && [...nextTok.w].length === 1 && kind(nextTok.w) === kind(w) && kind(w) !== "x") {
+          out.push(w); run = { kind: kind(w) }; continue;
+        }
+      }
+      // くり返し言葉の切れ目を直す（ほわほ＋わし → ほわほわ＋し）
+      if (run && run.kind === kind(w[0])) {
+        const cur = out[out.length - 1], cand = cur + w[0], n = [...cand].length;
+        if (n % 2 === 0 && n >= 4) {
+          const half = [...cand].slice(0, n / 2).join("");
+          if (half + half === cand) {
+            out[out.length - 1] = cand; run = null;
+            const rest = [...w].slice(1).join("");
+            if (rest) out.push(rest);
+            continue;
+          }
+        }
+      }
+      run = null;
       const prev = out.length ? out[out.length - 1] : null;
       // くっつく文字は前の言葉につなげる
-      if (prev && SUFFIX.has(w) && isKanjiOrKana(prev) && !isParticle(prev)) { out[out.length - 1] = prev + w; continue; }
+      if (prev && SUFFIX.has(w) && !isParticle(prev) && (isKanjiOrKana(prev) || (/[\u4e00-\u9fff]/.test(prev) && ["系", "的", "性", "感", "派"].includes(w)))) { out[out.length - 1] = prev + w; continue; }
       // 同じ言葉のくり返しは1語に（キレ＋キレ→キレキレ）
       if (prev && prev === w && w.length <= 3) { out[out.length - 1] = prev + w; continue; }
       out.push(w);
