@@ -383,6 +383,7 @@ const PROJECTS = [
   { id: "map", title: "聖ちぃ巡礼マップ", desc: "ちぃちゃんの足跡をめぐろう🐾", href: "https://seichii-map.pages.dev", external: true, open: true },
   { id: "kikaku2", title: "ちぃちゃんの好きなところ", desc: "ちぃちゃんの好きなところを教えて💘", href: "/kikaku2", page: "kikaku2", open: false, soon: "10/27公開予定" },
   { id: "kikaku3", title: "ちぃちゃんの推しTikTok", desc: "お気に入りのTikTokを教えて🎬", href: "/kikaku3", page: "kikaku3", open: false, soon: "10/28公開予定", showAfter: "kikaku2" },
+  { id: "kikaku4", title: "（企画④・内容は準備中）", desc: "", href: "", open: false, soon: "10/29公開予定", showAfter: "kikaku3" },
 ];
 
 let projectsReady = false;
