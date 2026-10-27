@@ -179,6 +179,11 @@ button,a,label,select,input,textarea,summary,.cal,.tl-scroll,.cloud{touch-action
   </section>
 
   <section aria-labelledby="rankTitle" style="display:flex;flex-direction:column;gap:12px">
+    <div class="tabs" role="tablist" aria-label="ランキングのお題" id="tabs2">
+      <button role="tab" data-cat="vlog" aria-selected="true">Vlog系</button>
+      <button role="tab" data-cat="dance" aria-selected="false">踊ってみた系</button>
+      <button role="tab" data-cat="close" aria-selected="false">寄り動画系</button>
+    </div>
     <div class="bar"><h2 id="rankTitle">Vlog系 ランキング</h2><span class="meta" id="rmeta"></span></div>
     <ol class="rank" id="rank"></ol>
     <p class="status" id="status">読み込み中…</p>
@@ -213,13 +218,13 @@ function pickInitialCat(){
 }
 function setCat(c){
   cat=c;
-  for(const b of $("tabs").querySelectorAll("[data-cat]")) b.setAttribute("aria-selected", b.dataset.cat===c);
+  for(const b of document.querySelectorAll(".tabs [data-cat]")) b.setAttribute("aria-selected", b.dataset.cat===c);
   $("catName").textContent=CATS[c];
   $("rankTitle").textContent=CATS[c]+" ランキング";
   try{ history.replaceState(null,"","#"+c); }catch(e){}
   render();
 }
-$("tabs").addEventListener("click",e=>{const b=e.target.closest("[data-cat]"); if(b) setCat(b.dataset.cat);});
+for(const t of [$("tabs"),$("tabs2")]) t.addEventListener("click",e=>{const b=e.target.closest("[data-cat]"); if(b) setCat(b.dataset.cat);});
 
 // カードは動画ごとに作りおきして、変わったところだけ書き換える
 // （サムネイル用プレーヤーや再生中の動画を作り直すと、読み込み直しで一瞬消えてしまうため）
