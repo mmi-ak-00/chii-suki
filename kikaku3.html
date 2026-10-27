@@ -136,6 +136,8 @@ button.go:disabled{opacity:.5;cursor:default}
 footer{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
 @media (max-width:420px){.thumb{width:96px;--tw:96}}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}.like.pop{animation:none}}
+/* ボタンを素早く押しても、ダブルタップの拡大にならないように */
+button,a,label,select,input,textarea,summary,.cal,.tl-scroll,.cloud{touch-action:manipulation}
 </style>
 </head>
 <body>
