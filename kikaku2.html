@@ -52,12 +52,15 @@ button{font-family:var(--display);font-weight:800;font-size:16px;border:0;border
 button:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
 button:disabled{opacity:.5;cursor:default}
 .hint{font-size:13px;color:var(--muted);margin:-12px 0 0 6px;min-height:1.4em}
-.cloud{background:var(--surface);border:2px dashed var(--line);border-radius:28px;padding:28px 18px;min-height:240px;
-  display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 16px}
-.word{font-family:var(--display);font-weight:800;line-height:1.15;white-space:nowrap;transition:font-size .5s ease,transform .4s ease;cursor:default}
-.word small{font-family:var(--body);font-weight:700;font-size:11px;color:var(--muted);margin-left:2px;vertical-align:super}
+.cloud{position:relative;background:var(--surface);border:2px dashed var(--line);border-radius:28px;padding:14px;min-height:240px;overflow:hidden}
+.cloud-in{position:relative;margin:0 auto}
+.cloud .empty{margin:0;padding-top:80px}
+.word{position:absolute;left:0;top:0;font-family:var(--display);font-weight:800;line-height:1.15;letter-spacing:-.02em;white-space:nowrap;cursor:default;padding:0 1px}
+.word.v{writing-mode:vertical-rl;letter-spacing:0;line-height:1.1;padding:1px 0}
+.word small{display:inline-block;vertical-align:top;line-height:1;margin:.12em 0 0 1px;font-family:var(--body);font-weight:700;font-size:10px;color:var(--muted);letter-spacing:0}
+.word.v small{text-combine-upright:all;margin:2px 0 0;vertical-align:baseline}
 .word.pop{animation:pop .6s ease}
-@keyframes pop{0%{transform:scale(.4)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+@keyframes pop{0%{opacity:0;scale:.4}60%{opacity:1;scale:1.15}100%{scale:1}}
 .empty{color:var(--muted);text-align:center;font-family:var(--display)}
 .bar{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
 h2{font-family:var(--display);font-size:18px;margin:0}
@@ -171,30 +174,100 @@ let shownPosts = new Set();
 const COLORS = ["--w1","--w2","--w3","--w4","--w5"];
 function hash(s){let h=0;for(const c of s)h=(h*31+c.codePointAt(0))|0;return Math.abs(h);}
 
+// ===== ワードクラウド（大きい言葉をまん中に置き、うずまき状にすき間へ詰めていく） =====
+let cloudItems=[], cloudFreq=new Map();
+function drawCloud(){
+  const { items, freq } = ChiiWords.count(posts, rules);
+  cloudItems=items; cloudFreq=freq;
+  const cloud=$("cloud");
+  if(!items.length){ cloud.innerHTML='<p class="empty">まだ投稿がありません。<br>最初の「好き」を書いてみてね。</p>'; return; }
+  layoutCloud();
+}
+function layoutCloud(){
+  const cloud=$("cloud"), items=cloudItems, freq=cloudFreq;
+  if(!items.length) return;
+  const W=Math.max(240, cloud.clientWidth-28);          // 使える横幅
+  const max=items[0][1], min=items[items.length-1][1];
+  const inner=document.createElement("div"); inner.className="cloud-in";
+  // 測っている間は広い場所を用意する（縦書きの言葉は、置き場所の高さが0だと正しく測れないため）
+  inner.style.width="4000px"; inner.style.height="4000px";
+  cloud.replaceChildren(inner);
+  // 言葉の部品を作って、大きさを測る
+  const els=items.map(([w,s],i)=>{
+    const r = max===min?0.6:(s-min)/(max-min);
+    const el=document.createElement("span");
+    el.className="word"+(shownWords.has(w)?"":" pop");
+    const h=hash(w);
+    // 上位3つ以外の、2〜6文字の言葉は4つに1つくらい縦書きにする
+    if(i>=3 && [...w].length>=2 && [...w].length<=6 && h%4===0 && (freq.get(w)||0)<=1) el.classList.add("v");
+    el.dataset.fs=(14+Math.sqrt(r)*46).toFixed(1);
+    el.style.color=`var(${COLORS[h%COLORS.length]})`;
+    el.textContent=w;
+    const n=freq.get(w)||0;
+    if(n>1){const sm=document.createElement("small");sm.textContent="×"+n;el.append(sm);}
+    el.title=`${n}件の投稿`;
+    el.style.visibility="hidden";
+    inner.append(el);
+    return el;
+  });
+  // 全部が横幅に収まるまで、文字の大きさを少しずつ小さくして並べ直す
+  let scale=Math.min(1, W/360), placed=null;
+  for(let tries=0; tries<8; tries++){
+    placed=place(els, scale, W);
+    if(placed.ok) break;
+    scale*=0.9;
+  }
+  const {boxes,minX,minY,maxX,maxY}=placed;
+  const bw=maxX-minX, bh=maxY-minY;
+  inner.style.width=Math.ceil(bw)+"px"; inner.style.height=Math.ceil(bh)+"px";
+  els.forEach((el,i)=>{
+    const b=boxes[i]; if(!b){ el.remove(); return; }
+    el.style.left=(b.x-minX)+"px"; el.style.top=(b.y-minY)+"px";
+    el.style.width=Math.ceil(b.w)+"px"; el.style.height=Math.ceil(b.h)+"px";   // 測った大きさで固定（縦書きが端でつぶれないように）
+    el.style.visibility="";
+  });
+  shownWords=new Set(items.map(i=>i[0]));
+}
+function place(els, scale, W){
+  const boxes=[], rects=[];
+  const PAD=3;
+  const ASPECT=1.25;                           // 少し横長の丸になるように
+  let minX=0,minY=0,maxX=0,maxY=0, ok=true;
+  for(let i=0;i<els.length;i++){
+    const el=els[i];
+    el.style.fontSize=(parseFloat(el.dataset.fs)*scale)+"px";
+    let w=el.offsetWidth, h=el.offsetHeight;   // 飛び出す動きの途中でも、本来の大きさで測る
+    // 縦書きがうまく測れない環境では、横書きに戻す
+    if(el.classList.contains("v") && h < parseFloat(el.style.fontSize)*0.8){ el.classList.remove("v"); w=el.offsetWidth; h=el.offsetHeight; }
+    if(w>W){ ok=false; }
+    let done=false;
+    // うずまきに沿って、ほかの言葉と重ならない場所を探す
+    for(let t=0; t<6000; t++){
+      const a=t*0.08, rad=0.9*a;
+      const cx=Math.cos(a)*rad*ASPECT, cy=Math.sin(a)*rad;
+      const x=cx-w/2, y=cy-h/2;
+      // 横幅からはみ出す位置は使わない
+      const nx0=Math.min(minX,x), nx1=Math.max(maxX,x+w);
+      if(i>0 && nx1-nx0>W) continue;
+      let hit=false;
+      for(const q of rects){ if(x<q.x+q.w+PAD && x+w+PAD>q.x && y<q.y+q.h+PAD && y+h+PAD>q.y){ hit=true; break; } }
+      if(hit) continue;
+      rects.push({x,y,w,h}); boxes[i]={x,y,w,h};
+      if(i===0){minX=x;minY=y;maxX=x+w;maxY=y+h;}
+      else{minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x+w);maxY=Math.max(maxY,y+h);}
+      done=true; break;
+    }
+    if(!done) ok=false;
+  }
+  return {boxes,minX,minY,maxX,maxY,ok};
+}
+let rzTimer=null;
+window.addEventListener("resize",()=>{ clearTimeout(rzTimer); rzTimer=setTimeout(layoutCloud,200); });
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(()=>layoutCloud());
+
 function render(){
   // ワードクラウド
-  const { items, freq } = ChiiWords.count(posts, rules);
-  const cloud=$("cloud");
-  if(!items.length){cloud.innerHTML='<p class="empty">まだ投稿がありません。<br>最初の「好き」を書いてみてね。</p>';}
-  else{
-    const max=items[0][1], min=items[items.length-1][1];
-    // 並びは大きい言葉を真ん中に寄せる
-    const arranged=[]; items.forEach((it,i)=> i%2? arranged.push(it): arranged.unshift(it));
-    cloud.replaceChildren(...arranged.map(([w,s])=>{
-      const r = max===min?0.5:(s-min)/(max-min);
-      const el=document.createElement("span");
-      el.className="word"+(shownWords.has(w)?"":" pop");
-      el.style.fontSize=(15+Math.round(Math.sqrt(r)*41))+"px";
-      el.style.color=`var(${COLORS[hash(w)%COLORS.length]})`;
-      el.style.transform=`rotate(${(hash(w)%7)-3}deg)`;
-      el.textContent=w;
-      const n=freq.get(w)||0;
-      if(n>1){const sm=document.createElement("small");sm.textContent="×"+n;el.append(sm);}
-      el.title=`${n}件の投稿`;
-      return el;
-    }));
-    shownWords=new Set(items.map(i=>i[0]));
-  }
+  drawCloud();
   // 投稿リスト
   $("list").replaceChildren(...posts.slice(0,60).map(p=>{
     const li=document.createElement("li");
