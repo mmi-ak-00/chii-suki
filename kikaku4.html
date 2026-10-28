@@ -76,6 +76,20 @@ h1 span{color:var(--accent)}
 .ph.in{animation:popin .6s cubic-bezier(.2,1.4,.4,1) both, floaty var(--dur) ease-in-out calc(var(--delay) + .6s) infinite}
 @keyframes popin{from{opacity:0;transform:translate(-50%,14px) scale(.7)}to{opacity:1;transform:translate(-50%,0) rotate(var(--rot))}}
 
+/* 同じ日の写真の束 */
+.ph.stack::before,.ph.stack::after{content:"";position:absolute;inset:0;border-radius:14px;background:var(--frame);box-shadow:0 6px 14px var(--shadow);z-index:-1}
+.ph.stack::before{transform:translate(7px,5px) rotate(7deg)}
+.ph.stack::after{transform:translate(-6px,3px) rotate(-6deg)}
+.ph .cnt{position:absolute;right:-11px;top:-11px;min-width:30px;height:30px;padding:0 6px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-family:var(--display);font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;border:3px solid var(--frame);box-sizing:border-box}
+.bub.multi{width:min(320px,86vw);max-width:none}
+.strip{display:flex;gap:6px;overflow-x:auto;margin:6px 0 6px;padding:2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.strip::-webkit-scrollbar{display:none}
+.sth{flex:none;width:48px;height:48px;padding:0;border:3px solid transparent;border-radius:11px;background:none;cursor:pointer;overflow:hidden}
+.sth img{width:100%;height:100%;object-fit:cover;border-radius:8px;display:block}
+.sth.sel{border-color:var(--accent)}
+.sth:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+.bub .bf{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:2px}
+.bub .bc{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 /* タップで浮き出るひとこと */
 .bub{position:absolute;z-index:7;transform:translateX(-50%);width:max-content;max-width:min(260px,80vw);background:var(--surface);color:var(--fg);border:2px solid var(--accent);border-radius:16px;padding:8px 12px;box-shadow:0 10px 24px var(--shadow);animation:rise .35s ease-out both;font-size:14px;line-height:1.6}
 .bub::after{content:"";position:absolute;left:calc(50% + var(--ax,0px));width:12px;height:12px;background:var(--surface);border:2px solid var(--accent);transform:translateX(-50%) rotate(45deg)}
@@ -83,7 +97,7 @@ h1 span{color:var(--accent)}
 .bub.down::after{top:-8px;border-bottom:0;border-right:0}
 .bub .bd{display:block;font-family:var(--display);font-weight:800;font-size:12px;color:var(--accent)}
 .bub .bt{display:block;overflow-wrap:anywhere}
-.bub .big{margin-top:4px;font:inherit;font-size:12px;font-weight:700;color:var(--muted);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
+.bub .big{margin-top:0;margin-left:auto;font:inherit;font-size:12px;font-weight:700;color:var(--muted);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
 @keyframes rise{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
 .empty-tl{position:absolute;left:50%;transform:translate(-50%,-140%);font-family:var(--display);color:var(--muted);font-size:14px;white-space:nowrap}
 
@@ -222,7 +236,7 @@ const $=id=>document.getElementById(id);
 const FROM="2025-11-02", TO="2026-11-01";
 const DAY=864e5;
 const t0=Date.UTC(2025,10,2), t1=Date.UTC(2026,10,1);
-let photos=[], ver=-1, demo=false, approval=true, timer=null, openId=null;
+let photos=[], ver=-1, demo=false, approval=true, timer=null, openKey=null, openIdx=0;
 const shownIds=new Set();
 
 // ---------- 日付 ----------
@@ -250,7 +264,10 @@ function render(){
   const xOf=ms=>PAD+(ms-t0)/(t1-t0)*(W-PAD*2);
 
   // 写真をどの段に置くか（左から順に、空いている段へ。上・下・上2・下2…）
-  const list=[...photos].map(p=>({p,x:xOf(dateMs(p))})).sort((a,b)=>a.x-b.x);
+  // 同じ日（「◯月ごろ」なら同じ月）の写真は、1つの束にまとめる
+  const groups=new Map();
+  for(const p of photos){ const k=p.d+(p.dayKnown?"":"~"); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(p); }
+  const list=[...groups.entries()].map(([key,ps])=>({key,ps,p:ps[0],x:xOf(dateMs(ps[0]))})).sort((a,b)=>a.x-b.x);
   const GAP=PW+10, ORDER=[-1,1,-2,2,-3,3,-4,4];
   const last={};
   let maxLane=1;
@@ -283,36 +300,59 @@ function render(){
   if(!photos.length) add("empty-tl",{top:mid+"px"},"最初の1枚を送ってね📷");
 
   for(const it of list){
-    const {p,x,lane}=it;
+    const {key,ps,x,lane}=it;
+    const n=ps.length;
+    const sel=openKey===key ? Math.min(openIdx,n-1) : 0;
+    const p=ps[openKey===key?sel:0];          // 束の表に見せる写真（開いているときは選んだ写真）
     const up=lane<0, k=Math.abs(lane);
     const top=up? mid-k*LANE-PW+6 : mid+k*LANE-6+ (k===1?18:0);
     const stemTop=up? top+PW : mid, stemH=up? mid-(top+PW) : top-mid;
     add("stem",{left:x+"px",top:stemTop+"px",height:Math.max(0,stemH)+"px"});
     add("dot",{left:x+"px",top:mid+"px"});
+    const isNew=shownIds.size && ps.some(q=>!shownIds.has(q.id));
     const b=document.createElement("button");
-    b.type="button"; b.className="ph"+(shownIds.size&&!shownIds.has(p.id)?" in":"")+(openId===p.id?" on":"");
+    b.type="button"; b.className="ph"+(n>1?" stack":"")+(isNew?" in":"")+(openKey===key?" on":"");
     b.setAttribute("role","listitem");
-    b.setAttribute("aria-label",`${dateLabel(p)}の写真${p.comment?"：「"+p.comment+"」":""}`);
+    b.setAttribute("aria-label", n>1 ? `${dateLabel(p)}の写真 ${n}枚` : `${dateLabel(p)}の写真${p.comment?"：「"+p.comment+"」":""}`);
     b.style.left=x+"px"; b.style.top=top+"px";
-    const h=hash(p.id);
+    const h=hash(key);
     b.style.setProperty("--rot",((h%9)-4)+"deg");
     b.style.setProperty("--dur",(4.2+(h%7)*0.35)+"s");
     b.style.setProperty("--delay",(-(h%10)*0.4)+"s");
     const img=document.createElement("img"); img.alt=""; img.loading="lazy"; img.decoding="async";
     img.src=p.thumbUrl||`/api/photos/img?id=${p.id}`;
     b.append(img);
-    b.onclick=e=>{ e.stopPropagation(); openId=(openId===p.id?null:p.id); render(); };
+    if(n>1){ const bd=document.createElement("span"); bd.className="cnt"; bd.textContent="+"+(n-1); b.append(bd); }
+    b.onclick=e=>{ e.stopPropagation(); if(openKey===key){ openKey=null; } else { openKey=key; openIdx=0; } render(); };
     els.push(b);
-    if(openId===p.id){
+    if(openKey===key){
       const bub=document.createElement("div");
-      bub.className="bub "+(up?"up":"down");
+      bub.className="bub "+(up?"up":"down")+(n>1?" multi":"");
       bub.style.left=x+"px"; bub.dataset.x=x;
       if(up) bub.style.bottom=(H-top+14)+"px"; else bub.style.top=(top+PW+14)+"px";
-      const d=document.createElement("span"); d.className="bd"; d.textContent=dateLabel(p);
+      const d=document.createElement("span"); d.className="bd"; d.textContent=dateLabel(p)+(n>1?`　${n}枚`:"");
+      bub.append(d);
+      if(n>1){
+        // その日の写真を横に並べる。押すとその写真のひとことに切り替わる
+        const strip=document.createElement("div"); strip.className="strip";
+        ps.forEach((q,i)=>{
+          const sb=document.createElement("button"); sb.type="button"; sb.className="sth"+(i===sel?" sel":"");
+          sb.setAttribute("aria-label",`${i+1}枚目${q.comment?"：「"+q.comment+"」":""}`);
+          if(i===sel) sb.setAttribute("aria-current","true");
+          const im=document.createElement("img"); im.alt=""; im.loading="lazy"; im.src=q.thumbUrl||`/api/photos/img?id=${q.id}`;
+          sb.append(im);
+          sb.onclick=e=>{ e.stopPropagation(); openIdx=i; render(); };
+          strip.append(sb);
+        });
+        bub.append(strip);
+      }
       const t=document.createElement("span"); t.className="bt"; t.textContent=p.comment||"（ひとことなし）";
+      const foot=document.createElement("span"); foot.className="bf";
+      if(n>1){ const c=document.createElement("span"); c.className="bc"; c.textContent=`${sel+1} / ${n}`; foot.append(c); }
       const big=document.createElement("button"); big.type="button"; big.className="big"; big.textContent="大きく見る";
       big.onclick=e=>{ e.stopPropagation(); openViewer(p); };
-      bub.append(d,t,big);
+      foot.append(big);
+      bub.append(t,foot);
       bub.onclick=e=>e.stopPropagation();
       els.push(bub);
     }
@@ -338,10 +378,12 @@ function render(){
       }
     }
   }
+  const selTh=tl.querySelector(".strip .sth.sel");
+  if(selTh){ const st=selTh.parentElement; st.scrollLeft=Math.max(0,selTh.offsetLeft-st.clientWidth/2+selTh.offsetWidth/2); }
   for(const p of photos) shownIds.add(p.id);
   $("tlMeta").textContent=photos.length?`${photos.length}枚`:"";
 }
-document.addEventListener("click",()=>{ if(openId!==null){ openId=null; render(); } });
+document.addEventListener("click",()=>{ if(openKey!==null){ openKey=null; render(); } });
 window.addEventListener("resize",()=>{ clearTimeout(window.__rz); window.__rz=setTimeout(render,150); });
 
 // ---------- 大きく見る ----------
