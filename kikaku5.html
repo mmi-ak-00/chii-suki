@@ -71,13 +71,31 @@ h1 span{color:var(--accent)}
 .vpick small{font-family:var(--body);font-weight:700;font-size:11px;color:var(--accent-ink);background:var(--accent);border-radius:999px;padding:2px 8px}
 .vpick input{position:absolute;width:1px;height:1px;opacity:0}
 .vpick:focus-within{border-color:var(--accent)}
-.vedit{display:flex;gap:12px;align-items:flex-start;background:var(--bg);border-radius:16px;padding:10px}
-.vedit video{width:110px;max-height:180px;border-radius:12px;background:#000;object-fit:cover;flex:none}
-.vctl{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+.vedit{display:flex;flex-direction:column;gap:10px;background:var(--bg);border-radius:16px;padding:12px}
+.vedit video{align-self:center;max-width:100%;width:auto;max-height:260px;border-radius:12px;background:#000;object-fit:contain}
+.vctl{display:flex;flex-direction:column;gap:8px;min-width:0}
 .vmsg{margin:0;font-size:13px;color:var(--muted)}
-.vlab{font-size:13px;font-weight:700}
-.vlab b{font-variant-numeric:tabular-nums;color:var(--accent)}
-.vctl input[type=range]{width:100%;accent-color:var(--accent)}
+.vlab{margin:0;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.vlab b{color:var(--accent)}
+.vlab small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+/* 全体のどのあたり（長い動画だけ） */
+.ovw{position:relative;height:22px;border-radius:8px;background:var(--line);touch-action:none;cursor:pointer;margin:2px 0}
+.ovw i{position:absolute;top:0;bottom:0;border-radius:8px;background:rgba(0,0,0,.18);border:2px solid var(--fg);box-sizing:border-box;min-width:14px}
+.ovw .sel{position:absolute;top:3px;bottom:3px;background:var(--accent);border-radius:3px;min-width:3px}
+.ovwt{margin:0 0 2px;font-size:12px;font-weight:700}
+.ovwl{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+/* 写真アプリのような範囲選び */
+.trim{display:flex;gap:6px;align-items:stretch}
+.add .tplay{flex:none;width:40px;padding:0;border-radius:10px;background:var(--line);color:var(--fg);font-size:15px}
+.strip{position:relative;flex:1;min-width:0;height:56px;padding:0 16px;touch-action:none;user-select:none;-webkit-user-select:none}
+.frames{position:relative;height:100%;display:flex;overflow:hidden;border-radius:6px;background:#3a2f35}
+.frames canvas{flex:none;height:100%;display:block}
+.dim{position:absolute;top:0;bottom:0;background:rgba(255,255,255,.6);pointer-events:none}
+.win{position:absolute;top:-3px;bottom:-3px;border:3px solid var(--accent);border-left-width:16px;border-right-width:16px;border-radius:9px;box-sizing:border-box;cursor:grab}
+.win .h{position:absolute;top:50%;transform:translateY(-50%);width:16px;text-align:center;color:#fff;font-weight:800;font-size:20px;line-height:1}
+.win .h.l{left:-16px} .win .h.r{right:-16px}
+.win .h::before{content:"";position:absolute;left:-10px;right:-10px;top:-24px;bottom:-24px}
+.ph{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1.5px;background:#fff;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.35);pointer-events:none}
 .add .vdel{align-self:flex-start;font-family:var(--body);font-size:13px;font-weight:700;background:none;border:0;border-radius:0;padding:0;color:var(--muted);text-decoration:underline;cursor:pointer}
 .vtip{margin:-2px 0 0;font-size:12px;color:var(--muted)}
 .vstep{margin:0;font-family:var(--display);font-weight:800;font-size:13px;display:flex;align-items:center;gap:6px}
@@ -148,18 +166,31 @@ button,a,input{touch-action:manipulation}
         <label class="vpick" id="vpickLab" for="vfile"><span aria-hidden="true">🎬</span> 10秒動画を付ける<small>なくてもOK</small>
           <input id="vfile" type="file" accept="video/*">
         </label>
-        <p class="vtip" id="vtip">長い動画は、先に写真アプリの「編集」で10秒くらいに切り取ってから選ぶと、すぐ読み込めます。</p>
+        <p class="vtip" id="vtip">1GBをこえる長い動画もそのまま選べます（使うのは選んだ10秒だけ）。iPhoneは選んだあと少し「準備中」になることがあります。</p>
         <div class="vedit" id="vedit" hidden>
           <video id="vprev" playsinline muted preload="auto"></video>
           <div class="vctl">
-            <p class="vstep"><b>1</b> 使う10秒をえらぶ</p>
+            <p class="vstep"><b>1</b> 使うところをえらぶ（10秒まで）</p>
             <p class="vmsg" id="vmsg"></p>
-            <div id="vrangeBox" hidden>
-              <label for="vstart" class="vlab">どこから10秒？ <b id="vfrom">0:00</b>〜<b id="vto">0:10</b></label>
-              <input id="vstart" type="range" min="0" max="0" step="0.1" value="0">
+            <div id="vrangeBox" hidden style="display:flex;flex-direction:column;gap:8px">
+              <div id="ovwBox" hidden>
+                <p class="ovwt">動画全体のどのあたり？</p>
+                <div class="ovw" id="ovw" aria-label="動画全体のどのあたりを見るか"><span class="sel" id="ovwSel"></span><i id="ovwWin"></i></div>
+                <div class="ovwl"><span>0:00</span><span id="ovwEnd"></span></div>
+              </div>
+              <div class="trim">
+                <button type="button" class="tplay" id="vlook" aria-label="選んだところを再生">▶</button>
+                <div class="strip" id="strip">
+                  <div class="frames" id="frames"></div>
+                  <div class="dim" id="dimL"></div><div class="dim" id="dimR"></div>
+                  <div class="win" id="win"><span class="h l" id="hL">‹</span><span class="h r" id="hR">›</span></div>
+                  <div class="ph" id="ph" hidden></div>
+                </div>
+              </div>
+              <p class="vlab"><b id="vfrom">0:00</b> 〜 <b id="vto">0:10</b>（<span id="vlen">10.0</span>秒）<small>枠ごと動かしたり、両はしの ‹ › を引っぱって長さを変えられます</small></p>
             </div>
             <p class="vstep"><b>2</b> 軽くする（圧縮）</p>
-            <button type="button" class="vgo" id="vcomp">この10秒を圧縮する</button>
+            <button type="button" class="vgo" id="vcomp">選んだところを圧縮する</button>
             <div class="prog" id="vprog" hidden><i id="vbar"></i></div>
             <p class="vres" id="vres" hidden></p>
             <button type="button" class="vdel" id="vclear">動画を外す</button>
@@ -319,10 +350,15 @@ document.querySelector(".sort").addEventListener("click",e=>{
 // ===== 10秒動画：えらぶ → どこから10秒か決める → スマホの中で小さくする =====
 let vsrc=null;
 const fmt=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,"0")}`;
+const fmt1=t=>`${Math.floor(t/60)}:${(t%60).toFixed(1).padStart(4,"0")}`;
+const MAXLEN=10, MINLEN=1, VIEWMAX=30;   // 下の帯に出すのは最大30秒ぶん（細かく選べるように）
+let sel={s:0,e:10}, view={v0:0,len:10}, thumbJob=0, thumbV=null;
 function clearVideo(){
+  stopLook(); thumbJob++;
   if(vsrc){ URL.revokeObjectURL(vsrc.url); if(vsrc.clipUrl) URL.revokeObjectURL(vsrc.clipUrl); }
-  $("vcomp").textContent="この10秒を圧縮する"; $("vcomp").classList.remove("done"); $("vcomp").disabled=false; $("vres").hidden=true; $("vprog").hidden=true; $("vtip").hidden=false;
+  $("vcomp").textContent="選んだところを圧縮する"; $("vcomp").classList.remove("done"); $("vcomp").disabled=false; $("vres").hidden=true; $("vprog").hidden=true; $("vtip").hidden=false;
   vsrc=null; $("vfile").value=""; $("vedit").hidden=true; $("vprev").removeAttribute("src"); $("vpickLab").hidden=false;
+  if(thumbV){ thumbV.removeAttribute("src"); thumbV.load(); }
 }
 $("vclear").onclick=clearVideo;
 $("vfile").addEventListener("change",async()=>{
@@ -330,31 +366,133 @@ $("vfile").addEventListener("change",async()=>{
   if(vsrc) URL.revokeObjectURL(vsrc.url);
   const url=URL.createObjectURL(f);
   const v=$("vprev"); v.src=url;
-  $("vedit").hidden=false; $("vpickLab").hidden=true; $("vmsg").textContent="動画を読み込んでいます…";
+  $("vedit").hidden=false; $("vpickLab").hidden=true; $("vrangeBox").hidden=true;
+  $("vmsg").textContent=f.size>3e8?`動画を読み込んでいます…（${f.size>1e9?(f.size/1e9).toFixed(1)+"GB":Math.round(f.size/1e6)+"MB"}の大きい動画なので、少し待ってね）`:"動画を読み込んでいます…";
   try{
-    await new Promise((ok,ng)=>{ v.onloadedmetadata=ok; v.onerror=ng; setTimeout(ng,15000); });
+    await new Promise((ok,ng)=>{ v.onloadedmetadata=ok; v.onerror=ng; setTimeout(ng,90000); });
     let dur=v.duration;
     if(!isFinite(dur)){ v.currentTime=1e9; await new Promise(r=>{ v.ontimeupdate=r; setTimeout(r,2000); }); dur=v.duration; v.currentTime=0; }
-    vsrc={file:f,url,dur,clip:null};
+    vsrc={file:f,url,dur,clip:null,ar:(v.videoWidth&&v.videoHeight)?v.videoWidth/v.videoHeight:9/16};
     $("vtip").hidden=true; resetClip();
-    const long=dur>10.05;
-    $("vrangeBox").hidden=!long;
-    $("vstart").max=String(long?Math.max(0,dur-10):0); $("vstart").value="0"; updRange();
-    $("vmsg").textContent=long?`${fmt(dur)}の動画です。好きな10秒をえらんでね。`:`${dur.toFixed(1)}秒の動画を付けます。`;
+    sel={s:0,e:Math.min(MAXLEN,dur)};
+    view={v0:0,len:Math.min(dur,VIEWMAX)};
+    $("vrangeBox").hidden=false; $("ovwBox").hidden=dur<=VIEWMAX; $("ovwEnd").textContent=fmt(dur);
+    $("vmsg").textContent=dur>MAXLEN+0.05?`${fmt(dur)}の動画です。使いたいところを枠でかこんでね。`:`${dur.toFixed(1)}秒の動画です。このまま使うか、枠で短くしてね。`;
+    drawSel(); seekPrev(sel.s); makeThumbs();
   }catch(e){ clearVideo(); $("ah").className="hint"; $("ah").textContent="この動画は読み込めませんでした。別の動画で試してみてね。"; }
 });
 function resetClip(){
   if(vsrc&&vsrc.clipUrl){ URL.revokeObjectURL(vsrc.clipUrl); vsrc.clipUrl=""; }
   if(vsrc) vsrc.clip=null;
-  $("vcomp").textContent="この10秒を圧縮する"; $("vcomp").classList.remove("done"); $("vcomp").disabled=false;
+  $("vcomp").textContent="選んだところを圧縮する"; $("vcomp").classList.remove("done"); $("vcomp").disabled=false;
   $("vres").hidden=true; $("vprog").hidden=true;
   const v=$("vprev"); if(vsrc&&v.src!==vsrc.url){ v.src=vsrc.url; } v.muted=true; v.controls=false; v.loop=false;
 }
-function updRange(){
-  const s=Number($("vstart").value)||0; $("vfrom").textContent=fmt(s); $("vto").textContent=fmt(Math.min(s+10,vsrc?vsrc.dur:10));
-  try{ $("vprev").currentTime=s+0.05; }catch(e){}
+// 帯の上の位置 ↔ 時間
+const fw=()=>$("frames").clientWidth||1;
+const t2x=t=>(t-view.v0)/view.len*fw();
+function drawSel(){
+  const W=fw(), xs=t2x(sel.s), xe=t2x(sel.e);
+  const win=$("win"); win.style.left=(xs)+"px"; win.style.width=(xe-xs+32)+"px";   // 両はしの持ち手（16pxずつ）は枠の外側
+  $("dimL").style.left="16px"; $("dimL").style.width=Math.max(0,xs)+"px";
+  $("dimR").style.left=(16+xe)+"px"; $("dimR").style.width=Math.max(0,W-xe)+"px";
+  $("vfrom").textContent=fmt1(sel.s); $("vto").textContent=fmt1(sel.e); $("vlen").textContent=(sel.e-sel.s).toFixed(1);
+  if(vsrc&&!$("ovwBox").hidden){
+    const D=vsrc.dur;
+    Object.assign($("ovwWin").style,{left:(view.v0/D*100)+"%",width:(view.len/D*100)+"%"});
+    Object.assign($("ovwSel").style,{left:(sel.s/D*100)+"%",width:((sel.e-sel.s)/D*100)+"%"});
+  }
 }
-$("vstart").addEventListener("input",()=>{ if(vsrc&&vsrc.clip) resetClip(); updRange(); });
+// 下の帯のコマ画像を作る（別の見えない動画で、1コマずつ取り出す）
+async function makeThumbs(){
+  if(!vsrc) return;
+  const job=++thumbJob, box=$("frames"), H=box.clientHeight||56, W=fw();
+  const cw=Math.max(16,Math.round(H*Math.min(vsrc.ar,1.8))), n=Math.max(1,Math.ceil(W/cw)), dpr=Math.min(2,window.devicePixelRatio||1);
+  const cs=[]; for(let i=0;i<n;i++){ const c=document.createElement("canvas"); c.width=cw*dpr; c.height=H*dpr; c.style.width=cw+"px"; cs.push(c); }
+  box.replaceChildren(...cs);
+  if(!thumbV){ thumbV=document.createElement("video"); thumbV.muted=true; thumbV.playsInline=true; thumbV.setAttribute("playsinline",""); thumbV.preload="auto"; }
+  if(thumbV.src!==vsrc.url){ thumbV.src=vsrc.url; await new Promise(r=>{ thumbV.onloadeddata=r; thumbV.onerror=r; setTimeout(r,8000); }); }
+  for(let i=0;i<n;i++){
+    if(job!==thumbJob) return;
+    const t=Math.min(vsrc.dur-0.05,view.v0+(i+0.5)*cw/W*view.len);
+    if(thumbV.fastSeek) thumbV.fastSeek(Math.max(0,t)); else thumbV.currentTime=Math.max(0,t);   // iPhoneは近くの区切りへ素早く飛ぶ方法を使う
+    await new Promise(r=>{ thumbV.onseeked=r; setTimeout(r,1500); });
+    if(job!==thumbJob) return;
+    try{
+      const g=cs[i].getContext("2d"), vw=thumbV.videoWidth, vh=thumbV.videoHeight; if(!vw) continue;
+      const s=Math.max(cs[i].width/vw,cs[i].height/vh);
+      g.drawImage(thumbV,(cs[i].width-vw*s)/2,(cs[i].height-vh*s)/2,vw*s,vh*s);
+    }catch(e){}
+  }
+}
+// 大きい画面の動画を、選んでいる位置に合わせる（動かしている間は間引く）
+let seekWant=null, seeking=false;
+function seekPrev(t){
+  seekWant=t; if(seeking) return;
+  const v=$("vprev"); seeking=true;
+  const go=()=>{ if(seekWant==null){ seeking=false; return; } const x=seekWant; seekWant=null; v.currentTime=x+0.02;
+    let done=false; const fin=()=>{ if(done) return; done=true; go(); }; v.onseeked=fin; setTimeout(fin,600); };
+  go();
+}
+let thumbT=0;
+function setView(v0){
+  const nv=Math.max(0,Math.min(vsrc.dur-view.len,v0));
+  if(Math.abs(nv-view.v0)<1e-6) return;
+  view.v0=nv; clearTimeout(thumbT); thumbT=setTimeout(makeThumbs,250);
+}
+// 枠を動かす・のばす
+let drag=null;
+$("strip").addEventListener("pointerdown",e=>{
+  if(!vsrc||vsrc.busy) return; stopLook();
+  const mode=e.target.closest("#hL")?"l":e.target.closest("#hR")?"r":e.target.closest("#win")?"m":"tap";
+  const r=$("frames").getBoundingClientRect();
+  if(mode==="tap"){   // 枠の外をタップしたら、そこへ枠を動かす
+    const t=view.v0+(e.clientX-r.left)/r.width*view.len, L=sel.e-sel.s;
+    sel.s=Math.max(0,Math.min(vsrc.dur-L,t-L/2)); sel.e=sel.s+L;
+  }
+  drag={mode:mode==="tap"?"m":mode,x0:e.clientX,s0:sel.s,e0:sel.e,id:e.pointerId};
+  try{ $("strip").setPointerCapture(e.pointerId); }catch(_){}
+  if(vsrc.clip) resetClip();
+  drawSel(); seekPrev(drag.mode==="r"?sel.e:sel.s); e.preventDefault();
+});
+$("strip").addEventListener("pointermove",e=>{
+  if(!drag||e.pointerId!==drag.id) return;
+  const dt=(e.clientX-drag.x0)/fw()*view.len, D=vsrc.dur;
+  if(drag.mode==="m"){ const L=drag.e0-drag.s0; sel.s=Math.max(0,Math.min(D-L,drag.s0+dt)); sel.e=sel.s+L; }
+  if(drag.mode==="l"){ sel.s=Math.max(0,Math.max(drag.e0-MAXLEN,Math.min(drag.e0-MINLEN,drag.s0+dt))); }
+  if(drag.mode==="r"){ sel.e=Math.min(D,Math.min(drag.s0+MAXLEN,Math.max(drag.s0+MINLEN,drag.e0+dt))); }
+  // 帯の外まで動かしたら、帯の方を送る
+  if(sel.s<view.v0) setView(sel.s); else if(sel.e>view.v0+view.len) setView(sel.e-view.len);
+  drawSel(); seekPrev(drag.mode==="r"?sel.e:sel.s);
+});
+const endDrag=e=>{ if(drag&&e.pointerId===drag.id){ drag=null; seekPrev(sel.s); } };
+$("strip").addEventListener("pointerup",endDrag); $("strip").addEventListener("pointercancel",endDrag);
+// 全体のどのあたり（長い動画だけ）：動かすと下の帯が切りかわり、枠も一緒に移る
+let odrag=null;
+function ovwAt(e){
+  const r=$("ovw").getBoundingClientRect(), D=vsrc.dur;
+  const c=(e.clientX-r.left)/r.width*D, off=sel.s-view.v0, L=sel.e-sel.s;
+  setView(c-view.len/2);
+  sel.s=Math.max(view.v0,Math.min(view.v0+view.len-L,view.v0+off)); sel.e=sel.s+L;
+  drawSel(); seekPrev(sel.s);
+}
+$("ovw").addEventListener("pointerdown",e=>{ if(!vsrc||vsrc.busy) return; stopLook(); if(vsrc.clip) resetClip(); odrag=e.pointerId; try{ $("ovw").setPointerCapture(e.pointerId); }catch(_){} ovwAt(e); e.preventDefault(); });
+$("ovw").addEventListener("pointermove",e=>{ if(odrag===e.pointerId) ovwAt(e); });
+$("ovw").addEventListener("pointerup",()=>{ odrag=null; }); $("ovw").addEventListener("pointercancel",()=>{ odrag=null; });
+window.addEventListener("resize",()=>{ if(vsrc&&!$("vedit").hidden){ drawSel(); clearTimeout(thumbT); thumbT=setTimeout(makeThumbs,250); } });
+// ▶：選んだところを音なしで流して確かめる（白い線が今の位置）
+let lookRaf=0;
+function stopLook(){ if(!lookRaf) return; cancelAnimationFrame(lookRaf); lookRaf=0; $("vlook").textContent="▶"; $("ph").hidden=true; const v=$("vprev"); v.pause(); }
+$("vlook").addEventListener("click",()=>{
+  if(!vsrc||vsrc.busy) return;
+  if(vsrc.clip){ const v=$("vprev"); v.currentTime=0; v.play().catch(()=>{}); return; }   // 圧縮後は、できあがった動画を流す
+  if(lookRaf){ stopLook(); seekPrev(sel.s); return; }
+  const v=$("vprev"); v.muted=true; v.currentTime=sel.s+0.02; v.play().catch(()=>{});
+  $("vlook").textContent="■"; $("ph").hidden=false;
+  const tick=()=>{ const t=v.currentTime; $("ph").style.left=(16+t2x(Math.max(sel.s,t)))+"px";
+    if(t>=sel.e||v.ended){ stopLook(); seekPrev(sel.s); return; } lookRaf=requestAnimationFrame(tick); };
+  lookRaf=requestAnimationFrame(tick);
+});
 
 // 「この10秒を圧縮する」：iPhoneは「押した瞬間」でないと音付きで再生できないので、押した瞬間に準備してから圧縮する
 let audioCtx=null, audioSrcFor=null, audioSrc=null;
@@ -362,6 +500,7 @@ $("vcomp").addEventListener("click",async()=>{
   if(!vsrc||vsrc.busy) return;
   const v=$("vprev");
   if(vsrc.clip){ return; }
+  stopLook();
   vsrc.busy=true;
   // ↓ ここまでを、押した瞬間（awaitの前）に済ませる
   try{ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); audioCtx.resume(); }catch(e){ audioCtx=null; }
@@ -370,7 +509,7 @@ $("vcomp").addEventListener("click",async()=>{
   v.pause();
   $("vcomp").disabled=true; $("vcomp").textContent="圧縮しています…";
   $("vprog").hidden=false; $("vbar").style.width="0%"; $("vres").hidden=true; $("vres").className="vres";
-  const len=Math.min(10,vsrc.dur||10), start=Number($("vstart").value)||0;
+  const start=sel.s, len=Math.min(MAXLEN,Math.max(0.5,sel.e-sel.s));
   const before=vsrc.file.size;
   let clip=await makeClip(v,start,len,p=>{ $("vbar").style.width=Math.round(p*100)+"%"; },true);
   let noAudio=false;
