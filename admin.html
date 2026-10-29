@@ -18,6 +18,9 @@ form{display:flex;gap:8px;flex-wrap:wrap}
 input{flex:1 1 200px;min-width:0;font:inherit;font-size:16px;padding:10px 14px;border:2px solid var(--line);border-radius:12px;background:var(--surface);color:var(--fg)}
 button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:8px 14px;cursor:pointer;background:var(--accent);color:var(--ink)}
 button.sub{background:var(--line);color:var(--fg)}
+.share{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#fff8d6;border-radius:12px;padding:10px 12px;margin-top:4px}
+.share b{flex-basis:100%;font-size:13px}
+.share .m{flex-basis:100%}
 button.del{background:transparent;color:var(--warn);border:1px solid var(--warn)}
 button.ban{background:transparent;color:#7a5a00;border:1px dashed #b08900}
 button.ban.armed{background:#7a5a00;color:#fff;border-style:solid}
@@ -322,6 +325,30 @@ async function loadProjects(){
         const pv=document.createElement("a"); pv.className="pv"; pv.href="/"+p.page; pv.target="_blank"; pv.rel="noopener";
         pv.textContent=p.open?"ページを開く":"プレビューで見る";
         parts.push(pv);
+      }
+      if(p.page&&!p.open){
+        // 限定公開：URLを知っている人だけが、公開前のページを見られる
+        const box=document.createElement("div"); box.className="share";
+        const hd=document.createElement("b"); hd.textContent="🔑 限定公開URL（URLを知っている人だけ見られます）";
+        box.append(hd);
+        const mk=(label,cls,fn)=>{ const b=document.createElement("button"); b.type="button"; b.className=cls; b.textContent=label; b.onclick=fn; return b; };
+        const act=async(extra,msg)=>{ try{ await call("share_reset",null,{pid:p.id,...extra}); $("pmsg").textContent=msg; await loadProjects(); }catch(e){ $("pmsg").textContent=e.message; } };
+        if(p.share){
+          const surl=new URL("/"+p.page+"?pv="+p.share,location.origin).toString();
+          const u=document.createElement("span"); u.className="m"; u.style.overflowWrap="anywhere"; u.textContent=surl;
+          const cp=mk("限定URLをコピー","",async()=>{
+            try{ await navigator.clipboard.writeText(surl); cp.textContent="コピーしました！"; setTimeout(()=>cp.textContent="限定URLをコピー",1800); }
+            catch(e){ $("pmsg").textContent="コピーできなかったので、このURLを長押ししてコピーしてください："+surl; }
+          });
+          let armR=false, armS=false;
+          const re=mk("URLを作り直す","sub",()=>{ if(!armR){ armR=true; re.textContent="前のURLは使えなくなります。作り直す？"; return; } act({},"新しい限定URLを作りました。前のURLはもう開けません。"); });
+          const st=mk("限定公開をやめる","sub",()=>{ if(!armS){ armS=true; st.textContent="本当にやめる？"; return; } act({stop:true},"限定公開をやめました。限定URLを開いてもトップに戻ります。"); });
+          box.append(u,cp,re,st);
+        }else{
+          const m=document.createElement("span"); m.className="m"; m.textContent="いまは限定公開していません。";
+          box.append(m,mk("限定公開URLを作る","",()=>act({},"限定公開URLを作りました。")));
+        }
+        parts.push(box);
       }
       if(li._note) parts.push(li._note);
       li.append(...parts); return li;

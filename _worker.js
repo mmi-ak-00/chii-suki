@@ -799,6 +799,35 @@ function same(a, b) {
 
 // ===== 管理者だけの「公開前プレビュー」 =====
 // 管理ページで合言葉を入れると、このブラウザにだけ印（クッキー）が付き、公開前の企画ページも開けます。
+// ===== 限定公開（URLを知っている人だけ、公開前の企画ページを見られる） =====
+async function shareGen(env, pid) {
+  await ensureSettings(env);
+  const row = await env.DB.prepare("SELECT v FROM settings WHERE k=?").bind("share_gen_" + pid).first();
+  return row ? Number(row.v) || 0 : 0;
+}
+async function shareToken(env, pid) {
+  const gen = await shareGen(env, pid);
+  if (gen < 0) return "";   // 限定公開を止めている
+  return (await sha(`share:${pid}:${gen}:${env.ADMIN_KEY || "salt"}`)).slice(0, 20);
+}
+// 正しい合言葉なら、その合言葉を返す（クッキーに入れておくため）
+async function shareCheck(request, env, pid, url) {
+  const tok = await shareToken(env, pid);
+  if (!tok) return null;
+  const q = url.searchParams.get("pv") || "";
+  const m = (request.headers.get("Cookie") || "").match(new RegExp(`(?:^|;\\s*)chii_sh_${pid}=([0-9a-f]+)`));
+  if (q && same(q, tok)) return tok;
+  if (m && same(m[1], tok)) return tok;
+  return null;
+}
+// 限定URLで開いた人には、しばらくクッキーで覚えておく（ページ内の移動や再読み込みでも見られるように）
+function withShare(res, sharing) {
+  if (!sharing) return res;
+  const r2 = new Response(res.body, res);
+  r2.headers.set("Cache-Control", "private, no-store");
+  r2.headers.append("Set-Cookie", `chii_sh_${sharing.pid}=${sharing.tok}; Path=/; Max-Age=${60 * 60 * 24 * 14}; HttpOnly; Secure; SameSite=Lax`);
+  return r2;
+}
 async function previewToken(env) { return (await sha("preview:" + env.ADMIN_KEY)).slice(0, 40); }
 async function isPreviewer(request, env) {
   if (!env.ADMIN_KEY) return false;
@@ -860,7 +889,18 @@ async function adminPost({ request, env }) {
       return json({ ok: true });
     case "projects": {
       const list = await projectStates(env);
-      return json({ projects: list.map((p) => ({ id: p.id, title: p.title, desc: p.desc, open: p.open, href: p.href || "", page: p.page || "", visible: p.visible, showAfter: p.showAfter || "" })) });
+      const out = [];
+      for (const p of list) out.push({ id: p.id, title: p.title, desc: p.desc, open: p.open, href: p.href || "", page: p.page || "", visible: p.visible, showAfter: p.showAfter || "", share: p.page && !p.open ? await shareToken(env, p.id) : "" });
+      return json({ projects: out });
+    }
+    case "share_reset": {
+      // 限定公開URLを作り直す（前のURLは使えなくなる）／止める
+      const pid = String(body.pid ?? "");
+      if (!PROJECTS.some((p) => p.id === pid)) return json({ error: "その企画は見つかりません。" }, 400);
+      const gen = await shareGen(env, pid);
+      const next = body.stop ? -1 : Math.max(0, gen) + 1;
+      await env.DB.prepare("INSERT INTO settings (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind("share_gen_" + pid, String(next)).run();
+      return json({ ok: true, share: await shareToken(env, pid) });
     }
     case "set_project": {
       const pid = String(body.pid ?? "");
@@ -1003,7 +1043,7 @@ async function adminPost({ request, env }) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    let previewing = false, linkBot = false;
+    let previewing = false, linkBot = false, sharing = null;
     // みんなが使う /api/（管理ページ以外）は、「同じ人」の印を用意して、投稿のときは禁止されていないか確かめる
     const isApi = url.pathname.startsWith("/api/") && url.pathname !== "/api/admin";
     const who = isApi ? await ttWho(request, env) : null;
@@ -1059,8 +1099,12 @@ export default {
           const ua = request.headers.get("User-Agent") || "";
           const isLinkBot = /Twitterbot|facebookexternalhit|Discordbot|Slackbot|LinkedInBot|Line\/|Pinterest|TelegramBot|WhatsApp|Applebot|Embedly|redditbot/i.test(ua);
           if (isLinkBot) { linkBot = true; }
-          else if (!(await isPreviewer(request, env))) return Response.redirect(new URL("/", url).toString(), 302);
-          else previewing = true;
+          else if (await isPreviewer(request, env)) previewing = true;
+          else {
+            const tok = await shareCheck(request, env, p.id, url);
+            if (tok) sharing = { pid: p.id, tok };
+            else return Response.redirect(new URL("/", url).toString(), 302);
+          }
         }
       }
       if (url.pathname === "/api/letters") {
@@ -1083,16 +1127,21 @@ export default {
     if (type.includes("text/html") && typeof HTMLRewriter !== "undefined") {
       const fix = { element(el) { el.setAttribute("content", new URL(el.getAttribute("content") || "/ogp.png", url).toString()); } };
       let rw = new HTMLRewriter();
+      if (sharing && !previewing) {
+        rw = rw.on("body", { element(el) {
+          el.prepend('<div style="position:sticky;top:0;z-index:50;background:#3b2a33;color:#fff;font:700 13px/1.5 system-ui,sans-serif;text-align:center;padding:8px 12px">先行公開中（このページはまだ一般公開前です。URLを知っている人だけが見られます）</div>', { html: true });
+        } });
+      }
       if (previewing) {
         rw = rw.on("body", { element(el) {
           el.prepend('<div style="position:sticky;top:0;z-index:50;background:#3b2a33;color:#fff;font:700 13px/1.5 system-ui,sans-serif;text-align:center;padding:8px 12px">非公開プレビュー中（このページはまだ公開されていません。見えているのは管理者のあなただけです）</div>', { html: true });
         } });
       }
-      return rw
+      return withShare(rw
         .on('meta[property="og:image"]', fix)
         .on('meta[name="twitter:image"]', fix)
-        .transform(res);
+        .transform(res), sharing);
     }
-    return res;
+    return withShare(res, sharing);
   },
 };
