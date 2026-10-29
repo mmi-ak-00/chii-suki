@@ -105,10 +105,6 @@ h1 span{color:var(--accent)}
 @keyframes spin{to{transform:rotate(360deg)}}
 .vwait small{display:block;font-weight:400;color:var(--muted);font-size:12px}
 .add .vwait button{margin-left:auto;flex:none;font-family:var(--body);font-size:12px;font-weight:700;padding:4px 10px;background:none;color:var(--muted);border:1.5px solid var(--line)}
-.pbtns{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
-.pbtns label{position:relative;font-family:var(--body);font-weight:700;font-size:12px;background:#fff;border:1.5px solid #e2c96a;border-radius:999px;padding:4px 10px;cursor:pointer}
-.pbtns input{position:absolute;width:1px;height:1px;opacity:0}
-#pres{margin:0;padding-left:1.4em}
 .vdbg{margin:0;font-size:12px;font-family:ui-monospace,monospace;background:#fff8d6;border-radius:8px;padding:6px 8px;line-height:1.5}
 .vstep{margin:0;font-family:var(--display);font-weight:800;font-size:13px;display:flex;align-items:center;gap:6px}
 .vstep b{width:20px;height:20px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:12px;display:inline-flex;align-items:center;justify-content:center}
@@ -178,14 +174,9 @@ button,a,input{touch-action:manipulation}
         <label class="vpick" id="vpickLab" for="vfile"><span aria-hidden="true">🎬</span> 10秒動画を付ける<small>なくてもOK</small>
           <input id="vfile" type="file" accept="video/*">
         </label>
-        <p class="vtip" id="vtip">1GBをこえる長い動画もそのまま選べます（使うのは選んだ10秒だけ）。iPhoneは選んだあと少し「準備中」になることがあります。</p>
-        <div class="vwait" id="vwait" hidden role="status"><span class="spin" aria-hidden="true"></span><span><span id="vwaitT">iPhoneが動画を準備しています…</span><small>選んだ動画を、iPhoneがサイトに渡す準備をしています。画質が高い動画ほど時間がかかります。</small></span><button type="button" id="vwaitX">やめる</button></div>
+        <p class="vtip" id="vtip">長い動画もそのまま選べます（使うのは選んだ10秒だけ）。iPhoneは動画の長さに合わせて準備に時間がかかるので、先に写真アプリの「編集」で短く切っておくと早くなります。</p>
+        <div class="vwait" id="vwait" hidden role="status"><span class="spin" aria-hidden="true"></span><span><span id="vwaitT">iPhoneが動画を準備しています…</span><small>選んだ動画を、iPhoneがサイトに渡せる形に作り直しています。40秒くらいの動画で20秒ほどかかります。長い動画は、写真アプリの「編集」で短く切ってから選ぶと早くなります。</small></span><button type="button" id="vwaitX">やめる</button></div>
         <p class="vdbg" id="vdbg" hidden></p>
-        <div class="vdbg" id="ptest" hidden>
-          <b>選び方テスト</b>：同じ動画を、下のボタンで1回ずつ選んでください。ボタンごとに「押してから届くまで」と「届いたサイズ」を記録します（ここで選んだ動画は投稿されません）。
-          <div class="pbtns"></div>
-          <ol id="pres"></ol>
-        </div>
         <div class="vedit" id="vedit" hidden>
           <div class="vwrap"><video id="vprev" playsinline muted preload="metadata"></video><canvas id="vcover" hidden></canvas></div>
           <div class="vctl">
@@ -393,25 +384,6 @@ window.addEventListener("focus",backNow);
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden) backNow(); });
 $("vfile").addEventListener("cancel",()=>{ picking=false; hideWait(); });
 $("vwaitX").addEventListener("click",()=>{ picking=false; hideWait(); });
-// ===== 選び方テスト（?keisoku のときだけ）：選び方の設定ごとに、iPhoneの準備時間と届くサイズを比べる =====
-if(KEISOKU){
-  const kinds=[["1 今の設定","video/*",false],["2 複数選択あり","video/*",true],["3 mp4とmov","video/mp4,video/quicktime",false],["4 拡張子で指定",".mov,.mp4,.m4v",false],["5 指定なし","",false]];
-  const box=$("ptest"), row=box.querySelector(".pbtns"); box.hidden=false;
-  for(const [name,acc,multi] of kinds){
-    const lab=document.createElement("label"), tx=document.createElement("span"); tx.textContent=name;
-    const inp=document.createElement("input"); inp.type="file"; if(acc) inp.accept=acc; if(multi) inp.multiple=true;
-    let t0=0;
-    inp.addEventListener("click",()=>{ t0=performance.now(); tx.textContent=name+"（待っています…）"; });
-    inp.addEventListener("cancel",()=>{ tx.textContent=name; });
-    inp.addEventListener("change",()=>{
-      const f=inp.files[0]; tx.textContent=name; if(!f) return;
-      const li=document.createElement("li");
-      li.textContent=`${name}：${((performance.now()-t0)/1000).toFixed(1)}秒／${(f.size/1e6).toFixed(1)}MB／${f.type||"形式不明"}／${f.name}`;
-      $("pres").append(li); inp.value="";
-    });
-    lab.append(tx,inp); row.append(lab);
-  }
-}
 const fmt=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,"0")}`;
 const fmt1=t=>`${Math.floor(t/60)}:${(t%60).toFixed(1).padStart(4,"0")}`;
 const MAXLEN=10, MINLEN=1, VIEWMAX=30;   // 下の帯に出すのは最大30秒ぶん（細かく選べるように）
