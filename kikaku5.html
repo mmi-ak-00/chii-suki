@@ -150,7 +150,7 @@ h1 span{color:var(--accent)}
 .card .ft{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .card .new{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.06em}
 .card .rank{position:absolute;top:-9px;left:12px;font-family:var(--display);font-weight:800;font-size:11px;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:1px 9px}
-.wk{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-family:var(--display);font-weight:800;font-size:14px;border:2px solid var(--ink);color:var(--ink);background:var(--surface);border-radius:999px;padding:5px 12px;cursor:pointer;font-variant-numeric:tabular-nums}
+.wk{margin-left:auto;flex:none;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;font-family:var(--display);font-weight:800;font-size:14px;border:2px solid var(--ink);color:var(--ink);background:var(--surface);border-radius:999px;padding:5px 12px;cursor:pointer;font-variant-numeric:tabular-nums}
 .wk .e{font-size:16px;line-height:1}
 .wk[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
 .wk.pop{animation:pop .45s ease}
@@ -349,6 +349,21 @@ function startDemo(){
 }
 
 $("at").addEventListener("input",()=>{ $("ac").textContent=`${[...$("at").value].length} / 40`; });
+// 動画を送る（どこまで送れたか分かるように、昔ながらの方法で送る）
+function upload(fd,onProg){
+  return new Promise((ok,ng)=>{
+    const x=new XMLHttpRequest(); x.open("POST","/api/wakaru"); x.timeout=120000;
+    x.upload.onprogress=e=>{ if(e.lengthComputable&&onProg) onProg(e.loaded/e.total); };
+    x.onload=()=>{ let d={}; try{ d=JSON.parse(x.responseText); }catch(e){} ok({ok:x.status>=200&&x.status<300,status:x.status,d}); };
+    x.onerror=()=>ng(new Error("network")); x.ontimeout=()=>ng(new Error("timeout")); x.onabort=()=>ng(new Error("abort"));
+    x.send(fd);
+  });
+}
+// 通信が切れても、実はカードが届いていることがあるので確かめる
+async function landed(text,before){
+  try{ const r=await fetch("/api/wakaru?v=-1",{cache:"no-store"}); const d=await r.json(); return (d.cards||[]).some(c=>c.own&&c.text===text&&c.video&&!before.has(c.id)); }
+  catch(e){ return false; }
+}
 $("af").addEventListener("submit",async e=>{
   e.preventDefault();
   const text=$("at").value.replace(/\s+/g," ").trim();
@@ -363,9 +378,27 @@ $("af").addEventListener("submit",async e=>{
     if(demo){ cards.unshift({id:"l"+Date.now(),text,n:1,at:Date.now(),mine:true,video:!!clip,dur:clip?clip.dur:0,videoUrl:clip?URL.createObjectURL(clip.blob):"",thumbUrl:clip?URL.createObjectURL(clip.thumb):""}); render(); $("at").value=""; $("ac").textContent="0 / 40"; clearVideo(); $("ah").className="hint ok"; $("ah").textContent="カードを出しました！（プレビューなので保存はされません）"+(clip?`（動画 ${(clip.blob.size/1e6).toFixed(1)}MB）`:""); return; }
     let r;
     if(clip){
-      $("ah").textContent="送っています…";
-      const fd=new FormData(); fd.append("text",text); fd.append("video",clip.blob,"clip"); fd.append("thumb",clip.thumb,"thumb.jpg"); fd.append("dur",String(clip.dur));
-      r=await fetch("/api/wakaru",{method:"POST",body:fd});
+      // 動画つきは、途中で通信が切れても自動でやり直す（届いていたら、やり直さない）
+      const before=new Set(cards.map(c=>c.id));
+      const why={network:"通信が途中で切れました",timeout:"時間がかかりすぎました",abort:"送るのが止まりました"};
+      let lastErr="";
+      for(let n=1;n<=3;n++){
+        $("ah").textContent=(n>1?`通信が切れたので、もう一度送っています（${n}/3）… `:"送っています… ")+"送り終わるまで、この画面のままにしてね。";
+        const fd=new FormData(); fd.append("text",text); fd.append("video",clip.blob,"clip.mp4"); fd.append("thumb",clip.thumb,"thumb.jpg"); fd.append("dur",String(clip.dur));
+        try{
+          r=await upload(fd,p=>{ $("ah").textContent=`送っています… ${Math.round(p*100)}%　送り終わるまで、この画面のままにしてね。`; });
+          break;
+        }catch(err){
+          lastErr=err.message;
+          if(await landed(text,before)){ r={ok:true,d:{}}; break; }   // 実は届いていた
+          if(n<3) await new Promise(ok=>setTimeout(ok,1500*n));
+        }
+      }
+      if(!r){ $("ah").textContent=`送れませんでした（${why[lastErr]||"通信がうまくいきませんでした"}）。電波のよいところで、もう一度「カードを出す」を押してね。圧縮した動画はそのまま残っています。`; return; }
+      if(!r.ok){ $("ah").textContent=r.d.error||`送れませんでした（エラー${r.status}）。少し待ってからもう一度どうぞ。`; return; }
+      $("at").value=""; $("ac").textContent="0 / 40"; clearVideo();
+      $("ah").className="hint ok"; $("ah").textContent="カードを出しました！";
+      await load(); return;
     }else{
       r=await fetch("/api/wakaru",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({text})});
     }
