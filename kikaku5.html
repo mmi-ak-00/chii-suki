@@ -141,16 +141,19 @@ h1 span{color:var(--accent)}
 .meta{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 
 /* カードの壁 */
-.wall{list-style:none;margin:0;padding:0;columns:2 170px;column-gap:10px}
-.card{break-inside:avoid;margin:0 0 10px;border-radius:20px;padding:14px 14px 12px;background:var(--tint);border:2px solid transparent;display:flex;flex-direction:column;gap:10px;position:relative}
+.wall{list-style:none;margin:-10px 0 0;padding:0;columns:2 170px;column-gap:10px}
+/* 順位の札がカードの上にはみ出すので、外側の箱に余白を持たせる（はみ出しが隣の列の下に出てしまうのを防ぐ） */
+.wall>li.cw{break-inside:avoid;padding-top:10px;display:block}
+.card{margin:0;border-radius:20px;padding:14px 14px 12px;background:var(--tint);border:2px solid transparent;display:flex;flex-direction:column;gap:10px;position:relative}
 .card.big{padding:18px 16px 14px}
 .card.big .tx{font-size:20px}
 .card.mid .tx{font-size:17px}
 .card .tx{font-family:var(--display);font-weight:800;font-size:15px;line-height:1.45;overflow-wrap:anywhere;margin:0}
-.card .ft{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.card .ft{display:flex;align-items:center;justify-content:space-between;gap:6px 8px;flex-wrap:wrap}
 .card .new{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.06em}
 .card .rank{position:absolute;top:-9px;left:12px;font-family:var(--display);font-weight:800;font-size:11px;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:1px 9px}
-.wk{margin-left:auto;flex:none;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;font-family:var(--display);font-weight:800;font-size:14px;border:2px solid var(--ink);color:var(--ink);background:var(--surface);border-radius:999px;padding:5px 12px;cursor:pointer;font-variant-numeric:tabular-nums}
+.wk{margin-left:auto;flex:none;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;font-family:var(--display);font-weight:800;font-size:14px;border:2px solid var(--ink);color:var(--ink);background:var(--surface);border-radius:999px;padding:5px 11px;cursor:pointer;font-variant-numeric:tabular-nums}
+.wk{gap:5px}
 .wk .e{font-size:16px;line-height:1}
 .wk[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
 .wk.pop{animation:pop .45s ease}
@@ -276,7 +279,8 @@ function render(){
   if(!list.length){ $("wall").replaceChildren(Object.assign(document.createElement("li"),{className:"empty",textContent:"まだカードがありません。最初の好きポイントを出してね！"})); return; }
   const now=Date.now();
   $("wall").replaceChildren(...list.map(c=>{
-    const li=document.createElement("li");
+    const wrap=document.createElement("li"); wrap.className="cw";
+    const li=document.createElement("div");
     const r=max>1?c.n/max:0;
     li.className="card"+(r>=0.66&&c.n>1?" big":r>=0.33&&c.n>1?" mid":"")+(seen.size&&!seen.has(c.id)?" in":"");
     const [tint,ink]=TINTS[hash(c.id)%TINTS.length];
@@ -305,7 +309,7 @@ function render(){
     b.innerHTML=`<span class="e" aria-hidden="true">🙌</span><span>わかる！</span><span>${c.n}</span>`;
     b.onclick=()=>vote(c);
     ft.append(b); li.append(tx,ft);
-    return li;
+    wrap.append(li); return wrap;
   }));
   justVoted=null;
   for(const c of cards) seen.add(c.id);
