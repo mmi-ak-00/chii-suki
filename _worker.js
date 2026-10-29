@@ -502,6 +502,185 @@ async function phImage({ request, env }) {
   return new Response(bytes, { headers: { "content-type": b.type, "cache-control": shown ? "public, max-age=86400" : "private, no-store" } });
 }
 
+// ===== 企画⑤ ちぃちゃんの好きパフォーマンス（「わかる！」カード） =====
+const WK_MAX = 40;          // カード1枚の文字数
+const WK_WAIT_SEC = 10;     // 同じ人がカードを続けて出せるまでの秒数
+const WK_PER_HOUR = 20;     // 同じ人が1時間に出せるカードの数
+// 動画（スマホの中で10秒・小さくしてから届く）
+const WK_VIDEO_MAX = 3_000_000;        // 1本の大きさの上限（バイト）
+const WK_VIDEO_TOTAL = 150_000_000;    // 動画全部の大きさの上限（データベースの容量に収めるため）
+const WK_VIDEO_PER_HOUR = 5;           // 同じ人が1時間に送れる動画の数
+const WK_CHUNK = 900_000;              // データベースに分けて入れる1かけらの大きさ
+function toBytes(x) {
+  if (!x) return null;
+  if (x instanceof Uint8Array) return x;
+  if (x instanceof ArrayBuffer) return new Uint8Array(x);
+  if (Array.isArray(x)) return Uint8Array.from(x);
+  if (ArrayBuffer.isView(x)) return new Uint8Array(x.buffer, x.byteOffset, x.byteLength);
+  return null;
+}
+function videoType(u) {
+  if (!u || u.length < 12) return "";
+  if (u[4] === 0x66 && u[5] === 0x74 && u[6] === 0x79 && u[7] === 0x70) return "video/mp4";      // ....ftyp
+  if (u[0] === 0x1a && u[1] === 0x45 && u[2] === 0xdf && u[3] === 0xa3) return "video/webm";      // EBML
+  return "";
+}
+let wkReady = false;
+async function ensureWK(env) {
+  if (wkReady) return;
+  await env.DB.batch([
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS wk_cards (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT NOT NULL, at INTEGER NOT NULL, iph TEXT, hidden INTEGER NOT NULL DEFAULT 0, seed INTEGER NOT NULL DEFAULT 0)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS wk_votes (card_id INTEGER NOT NULL, who TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (card_id, who))"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_wk_iph ON wk_cards (iph, at)"),
+    env.DB.prepare("INSERT OR IGNORE INTO meta (k, v) VALUES ('wk_ver', 0)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS wk_media (card_id INTEGER PRIMARY KEY, type TEXT NOT NULL, size INTEGER NOT NULL, dur REAL, thumb BLOB, thumb_type TEXT, chunks INTEGER NOT NULL)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS wk_chunks (card_id INTEGER NOT NULL, idx INTEGER NOT NULL, data BLOB NOT NULL, PRIMARY KEY (card_id, idx))"),
+  ]);
+  wkReady = true;
+}
+function wkNG(env, text) {
+  const extra = (env.NG_WORDS || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const lower = text.toLowerCase();
+  return [...DEFAULT_NG, ...extra].some((w) => lower.includes(w.toLowerCase()));
+}
+async function wkGet({ request, env, who }) {
+  const url = new URL(request.url);
+  await ensureWK(env);
+  const row = await env.DB.prepare("SELECT v FROM meta WHERE k='wk_ver'").first();
+  const ver = row ? row.v : 0;
+  if (Number(url.searchParams.get("v") ?? -1) === ver) return json({ ver, same: true });
+  const { results } = await env.DB.prepare(
+    "SELECT c.id, c.text, c.at, (SELECT COUNT(*) FROM wk_votes v WHERE v.card_id=c.id) AS n, EXISTS(SELECT 1 FROM wk_votes v WHERE v.card_id=c.id AND v.who=?) AS mine, (c.iph=?) AS own, m.dur AS dur, (m.card_id IS NOT NULL) AS video FROM wk_cards c LEFT JOIN wk_media m ON m.card_id=c.id WHERE c.hidden=0 ORDER BY c.id DESC LIMIT 600"
+  ).bind(who.key, who.key).all();
+  return json({ ver, cards: results.map((r) => ({ id: r.id, text: r.text, at: r.at, n: r.n, mine: !!r.mine, own: !!r.own, video: !!r.video, dur: r.dur || 0 })) });
+}
+async function wkAdd({ request, env, who }) {
+  let text = "", video = null, thumb = null, dur = 0;
+  const ct = request.headers.get("content-type") || "";
+  try {
+    if (ct.includes("multipart/form-data")) {
+      const f = await request.formData();
+      text = String(f.get("text") ?? "");
+      const vf = f.get("video"), tf = f.get("thumb");
+      if (vf && typeof vf !== "string") video = new Uint8Array(await vf.arrayBuffer());
+      if (tf && typeof tf !== "string") thumb = new Uint8Array(await tf.arrayBuffer());
+      dur = Number(f.get("dur")) || 0;
+    } else {
+      const body = await request.json();
+      text = String(body?.text ?? "");
+    }
+  } catch { return json({ error: "送れませんでした。動画が大きすぎるかもしれません。" }, 400); }
+  text = text.replace(/\s+/g, " ").trim();
+  if (!text) return json({ error: "好きポイントを書いてね。" }, 400);
+  if ([...text].length > WK_MAX) return json({ error: `${WK_MAX}文字までで書いてね。` }, 400);
+  if (wkNG(env, text)) return json({ error: "その言葉は投稿できません。" }, 400);
+  let vtype = "", ttype = "";
+  if (video) {
+    vtype = videoType(video);
+    if (!vtype) return json({ error: "この動画は読み込めませんでした。別の動画で試してみてね。" }, 400);
+    if (video.length > WK_VIDEO_MAX) return json({ error: "動画が大きすぎます。もう少し短くしてみてね。" }, 400);
+    if (thumb) { ttype = imgType(thumb); if (!ttype || thumb.length > 200_000) thumb = null; }
+  }
+  await ensureWK(env);
+  const now = Date.now();
+  const recent = await env.DB.prepare("SELECT SUM(at > ?) AS short, COUNT(*) AS hour FROM wk_cards WHERE iph=? AND at > ?")
+    .bind(now - WK_WAIT_SEC * 1000, who.key, now - 3600 * 1000).first();
+  if (recent && recent.short > 0) return json({ error: "ちょっと待ってからもう一度どうぞ。" }, 429);
+  if (recent && recent.hour >= WK_PER_HOUR) return json({ error: "たくさんありがとう！ 少し時間をあけてね。" }, 429);
+  if (video) {
+    const vh = await env.DB.prepare("SELECT COUNT(*) AS n FROM wk_cards c JOIN wk_media m ON m.card_id=c.id WHERE c.iph=? AND c.at > ?").bind(who.key, now - 3600 * 1000).first();
+    if (vh && vh.n >= WK_VIDEO_PER_HOUR) return json({ error: "動画はたくさん送れないので、少し時間をあけてね。" }, 429);
+    const tot = await env.DB.prepare("SELECT COALESCE(SUM(size),0) AS s FROM wk_media").first();
+    if (tot && tot.s + video.length > WK_VIDEO_TOTAL) return json({ error: "動画がいっぱいになりました。文字だけのカードなら出せます。" }, 400);
+  }
+  // 動画なしで、同じ文のカードがもうあれば、新しく作らずに「わかる！」を押したことにする
+  if (!video) {
+    const same = await env.DB.prepare("SELECT id FROM wk_cards WHERE hidden=0 AND text=? LIMIT 1").bind(text).first();
+    if (same) {
+      await env.DB.batch([
+        env.DB.prepare("INSERT OR IGNORE INTO wk_votes (card_id, who, at) VALUES (?, ?, ?)").bind(same.id, who.key, now),
+        env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='wk_ver'"),
+      ]);
+      return json({ ok: true, id: same.id, merged: true });
+    }
+  }
+  const ins = await env.DB.prepare("INSERT INTO wk_cards (text, at, iph) VALUES (?, ?, ?) RETURNING id").bind(text, now, who.key).first();
+  const ops = [];
+  if (video) {
+    const n = Math.ceil(video.length / WK_CHUNK);
+    for (let i = 0; i < n; i++) {
+      ops.push(env.DB.prepare("INSERT INTO wk_chunks (card_id, idx, data) VALUES (?, ?, ?)").bind(ins.id, i, video.slice(i * WK_CHUNK, (i + 1) * WK_CHUNK)));
+    }
+    ops.push(env.DB.prepare("INSERT INTO wk_media (card_id, type, size, dur, thumb, thumb_type, chunks) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .bind(ins.id, vtype, video.length, Math.min(12, Math.max(0, dur)), thumb, ttype || null, n));
+  }
+  // 自分で出したカードには、自分の「わかる！」を1つ付けておく
+  ops.push(env.DB.prepare("INSERT OR IGNORE INTO wk_votes (card_id, who, at) VALUES (?, ?, ?)").bind(ins.id, who.key, now));
+  ops.push(env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='wk_ver'"));
+  try { await env.DB.batch(ops); }
+  catch (e) {
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM wk_cards WHERE id=?").bind(ins.id),
+      env.DB.prepare("DELETE FROM wk_chunks WHERE card_id=?").bind(ins.id),
+      env.DB.prepare("DELETE FROM wk_media WHERE card_id=?").bind(ins.id),
+    ]);
+    return json({ error: "保存できませんでした。もう一度試してみてね。" }, 500);
+  }
+  return json({ ok: true, id: ins.id });
+}
+
+// 動画を返す（iPhoneは少しずつ読み込むので、部分読み込み（Range）に対応する）
+async function wkVideo({ request, env }) {
+  const url = new URL(request.url);
+  const id = Number(url.searchParams.get("id"));
+  if (!id) return new Response("", { status: 404 });
+  await ensureWK(env);
+  const card = await env.DB.prepare("SELECT c.hidden, m.type, m.size, m.thumb, m.thumb_type FROM wk_cards c JOIN wk_media m ON m.card_id=c.id WHERE c.id=?").bind(id).first();
+  if (!card) return new Response("", { status: 404 });
+  const admin = await isPreviewer(request, env);
+  if (card.hidden && !admin) return new Response("", { status: 404 });
+  const cache = card.hidden ? "private, no-store" : "public, max-age=86400";
+  if (url.searchParams.get("s") === "thumb") {
+    const t = toBytes(card.thumb);
+    if (!t) return new Response("", { status: 404 });
+    return new Response(t, { headers: { "content-type": card.thumb_type || "image/jpeg", "cache-control": cache } });
+  }
+  const { results } = await env.DB.prepare("SELECT data FROM wk_chunks WHERE card_id=? ORDER BY idx").bind(id).all();
+  const parts = results.map((r) => toBytes(r.data)).filter(Boolean);
+  const total = parts.reduce((s, p) => s + p.length, 0);
+  const all = new Uint8Array(total);
+  let o = 0; for (const p of parts) { all.set(p, o); o += p.length; }
+  const base = { "content-type": card.type, "accept-ranges": "bytes", "cache-control": cache };
+  const m = (request.headers.get("Range") || "").match(/bytes=(\d*)-(\d*)/);
+  if (m && total) {
+    let s = m[1] === "" ? Math.max(0, total - Number(m[2] || 0)) : Number(m[1]);
+    let e = m[1] !== "" && m[2] !== "" ? Number(m[2]) : total - 1;
+    if (m[1] === "" ) e = total - 1;
+    if (s >= total || s > e) return new Response("", { status: 416, headers: { ...base, "content-range": `bytes */${total}` } });
+    e = Math.min(e, total - 1);
+    return new Response(all.slice(s, e + 1), { status: 206, headers: { ...base, "content-range": `bytes ${s}-${e}/${total}`, "content-length": String(e - s + 1) } });
+  }
+  return new Response(all, { headers: { ...base, "content-length": String(total) } });
+}
+
+async function wkVote({ request, env, who }) {
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "送れませんでした。" }, 400); }
+  const id = Number(body?.id);
+  if (!id) return json({ error: "送れませんでした。" }, 400);
+  await ensureWK(env);
+  const card = await env.DB.prepare("SELECT 1 AS x FROM wk_cards WHERE id=? AND hidden=0").bind(id).first();
+  if (!card) return json({ error: "このカードは見つかりません。" }, 404);
+  const on = !!body?.on;
+  await env.DB.batch([
+    on
+      ? env.DB.prepare("INSERT OR IGNORE INTO wk_votes (card_id, who, at) VALUES (?, ?, ?)").bind(id, who.key, Date.now())
+      : env.DB.prepare("DELETE FROM wk_votes WHERE card_id=? AND who=?").bind(id, who.key),
+    env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='wk_ver'"),
+  ]);
+  return json({ ok: true, on });
+}
+
 // ===== 生誕企画のリスト =====
 // 並び順がそのまま「企画①②③…」の番号になります。
 // open: true は最初から公開。false は管理ページで「公開する」を押すまで COMING SOON 表示。
@@ -513,7 +692,7 @@ const PROJECTS = [
   { id: "kikaku2", title: "ちぃちゃんの好きなところ", desc: "ちぃちゃんの好きなところを教えて💘", href: "/kikaku2", page: "kikaku2", open: false, soon: "10/27公開予定" },
   { id: "kikaku3", title: "ちぃちゃんの推しTikTok", desc: "お気に入りのTikTokを教えて🎬", href: "/kikaku3", page: "kikaku3", open: false, soon: "10/28公開予定", showAfter: "kikaku2" },
   { id: "kikaku4", title: "23歳のちぃ記録", desc: "23歳のちぃちゃんの1年を振り返ろう🗓️", href: "/kikaku4", page: "kikaku4", open: false, soon: "10/29公開予定", showAfter: "kikaku3" },
-  { id: "kikaku5", title: "（企画⑤・内容は準備中）", desc: "", href: "", open: false, soon: "10/30公開予定", showAfter: "kikaku4" },
+  { id: "kikaku5", title: "ちぃちゃんの好きパフォーマンス", desc: "その好きポイント「わかる！」🙌", href: "/kikaku5", page: "kikaku5", open: false, soon: "10/30公開予定", showAfter: "kikaku4" },
 ];
 
 let projectsReady = false;
@@ -615,6 +794,7 @@ async function adminPost({ request, env }) {
         letters: await one("SELECT COUNT(*) AS n FROM letters"),
         tiktok: await one("SELECT COUNT(*) AS n FROM tiktok"),
         photos: await one("SELECT COUNT(*) AS n FROM photos"),
+        wakaru: await (async () => { await ensureWK(env); return one("SELECT COUNT(*) AS n FROM wk_cards"); })(),
         photosPending: await one("SELECT COUNT(*) AS n FROM photos WHERE status='pending'"),
       });
     }
@@ -646,6 +826,41 @@ async function adminPost({ request, env }) {
       await env.DB.prepare("INSERT INTO settings (k, v) VALUES ('photo_approval', ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(body.on ? "on" : "off").run();
       return json({ ok: true, approval: !!body.on });
     }
+    case "wk_list": {
+      await ensureWK(env);
+      const { results } = await env.DB.prepare("SELECT c.id, c.text, c.at, c.hidden, c.seed, (SELECT COUNT(*) FROM wk_votes v WHERE v.card_id=c.id) AS n, m.size AS vsize FROM wk_cards c LEFT JOIN wk_media m ON m.card_id=c.id ORDER BY c.id DESC LIMIT 1000").all();
+      const tot = await env.DB.prepare("SELECT COALESCE(SUM(size),0) AS s FROM wk_media").first();
+      return await withPreviewCookie(json({ items: results, videoBytes: tot?.s || 0, videoLimit: WK_VIDEO_TOTAL }), env);
+    }
+    case "wk_add": {
+      await ensureWK(env);
+      const text = String(body.text ?? "").replace(/\s+/g, " ").trim();
+      if (!text) return json({ error: "カードの文を入れてね。" }, 400);
+      if ([...text].length > WK_MAX) return json({ error: `${WK_MAX}文字までで書いてね。` }, 400);
+      await env.DB.batch([
+        env.DB.prepare("INSERT INTO wk_cards (text, at, iph, seed) VALUES (?, ?, 'admin', 1)").bind(text, Date.now()),
+        env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='wk_ver'"),
+      ]);
+      return json({ ok: true });
+    }
+    case "wk_hide":
+    case "wk_show":
+      await ensureWK(env);
+      await env.DB.batch([
+        env.DB.prepare("UPDATE wk_cards SET hidden=? WHERE id=?").bind(body.action === "wk_hide" ? 1 : 0, id),
+        env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='wk_ver'"),
+      ]);
+      return json({ ok: true });
+    case "wk_delete":
+      await ensureWK(env);
+      await env.DB.batch([
+        env.DB.prepare("DELETE FROM wk_cards WHERE id=?").bind(id),
+        env.DB.prepare("DELETE FROM wk_votes WHERE card_id=?").bind(id),
+        env.DB.prepare("DELETE FROM wk_media WHERE card_id=?").bind(id),
+        env.DB.prepare("DELETE FROM wk_chunks WHERE card_id=?").bind(id),
+        env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='wk_ver'"),
+      ]);
+      return json({ ok: true });
     case "tiktok_list": {
       await ensureTT(env);
       const { results } = await env.DB.prepare("SELECT id, cat, vid, title, comment, at, hidden FROM tiktok ORDER BY id DESC LIMIT 1000").all();
@@ -715,6 +930,17 @@ export default {
         return json({ error: "method not allowed" }, 405);
       }
       if (url.pathname === "/api/photos/img") return await phImage(c);
+      if (url.pathname === "/api/wakaru/video") return await wkVideo(c);
+      if (url.pathname === "/api/wakaru" || url.pathname === "/api/wakaru/vote") {
+        const who = await ttWho(request, env);
+        const cw = { ...c, who };
+        let res;
+        if (url.pathname === "/api/wakaru") {
+          if (request.method === "GET") res = await wkGet(cw);
+          else if (request.method === "POST") res = await wkAdd(cw);
+        } else if (request.method === "POST") res = await wkVote(cw);
+        return withUidCookie(res || json({ error: "method not allowed" }, 405), who);
+      }
       if (url.pathname === "/api/tiktok" || url.pathname === "/api/tiktok/like" || url.pathname === "/api/tiktok/comment") {
         const who = await ttWho(request, env);
         const cw = { ...c, who };

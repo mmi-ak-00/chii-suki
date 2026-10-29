@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ちぃちゃんの好きパフォーマンス</title>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ちぃむみーてぃんぐ2026">
+<meta property="og:title" content="ちぃちゃんの好きパフォーマンス｜ちぃむみーてぃんぐ2026">
+<meta property="og:description" content="ちぃむみーてぃんぐ2026 企画⑤ その好きポイント「わかる！」🙌">
+<meta property="og:image" content="/ogp-kikaku5.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="/ogp-kikaku5.png">
+<meta name="description" content="ちぃちゃん生誕企画「ちぃむみーてぃんぐ2026」企画⑤ ちぃちゃんの好きパフォーマンス">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
+<style>
+/* Layout: 戻るリンク → 見出し → 1行で好きポイントを出す欄 → 並び替え → 「わかる！」カードの壁（わかるが多いほど大きい） */
+:root{
+  --bg:#fff7f9; --surface:#ffffff; --fg:#3b2a33; --muted:#8a7480; --line:#f1d9e2;
+  --accent:#e8517f; --accent-ink:#ffffff;
+  --w1:#e8517f; --w2:#f08a3c; --w3:#3aa58a; --w4:#5b7fe0; --w5:#a35fd1;
+  --t1:#fde7ef; --t2:#ffeede; --t3:#e3f5ee; --t4:#e6ecfd; --t5:#f1e6fb;
+  --display:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",system-ui,sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1f1519; --surface:#2a1d23; --fg:#f6e9ee; --muted:#b59aa6; --line:#43303a;
+  --accent:#ff7aa2; --accent-ink:#2a0f19;
+  --w1:#ff7aa2; --w2:#ffab6b; --w3:#5fd1b0; --w4:#8fa9ff; --w5:#cf96f5;
+  --t1:#3a2430; --t2:#3a2c22; --t3:#20332c; --t4:#232a3d; --t5:#2f2439; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1f1519; --surface:#2a1d23; --fg:#f6e9ee; --muted:#b59aa6; --line:#43303a;
+  --accent:#ff7aa2; --accent-ink:#2a0f19;
+  --w1:#ff7aa2; --w2:#ffab6b; --w3:#5fd1b0; --w4:#8fa9ff; --w5:#cf96f5;
+  --t1:#3a2430; --t2:#3a2c22; --t3:#20332c; --t4:#232a3d; --t5:#2f2439; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.back{font-family:var(--display);font-weight:800;font-size:14px;color:var(--accent);text-decoration:none;align-self:flex-start}
+.back:hover,.back:focus-visible{text-decoration:underline}
+.demo{background:var(--line);border-radius:14px;padding:8px 14px;font-size:13px;margin:0}
+header{display:flex;flex-direction:column;gap:6px}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(26px,6.5vw,36px);line-height:1.25;margin:0;text-wrap:balance}
+h1 span{color:var(--accent)}
+.sub{margin:0;font-family:var(--display);font-weight:800;font-size:16px}
+.lead{margin:0;color:var(--muted);font-size:14px}
+
+/* 出す欄 */
+.add{background:var(--surface);border:2px solid var(--line);border-radius:24px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.add h2{margin:0;font-family:var(--display);font-weight:800;font-size:17px}
+.add form{display:flex;gap:8px;flex-wrap:wrap}
+.add input{flex:1 1 220px;min-width:0;font:inherit;font-size:16px;color:var(--fg);background:var(--bg);border:2px solid var(--line);border-radius:999px;padding:11px 16px;outline:none}
+.add input:focus{border-color:var(--accent)}
+.add button{font-family:var(--display);font-weight:800;font-size:16px;border:0;border-radius:999px;padding:11px 22px;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+.add button:disabled{opacity:.5}
+.add .row{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)}
+.hint{margin:0;font-size:13px;color:var(--muted);min-height:1.4em}
+.hint.ok{color:var(--w3)}
+
+.vbox{display:flex;flex-direction:column;gap:8px}
+.vpick{position:relative;align-self:flex-start;display:inline-flex;align-items:center;gap:6px;font-family:var(--display);font-weight:800;font-size:14px;border:2px dashed var(--line);border-radius:999px;padding:7px 14px;cursor:pointer;background:var(--bg)}
+.vpick small{font-family:var(--body);font-weight:700;font-size:11px;color:var(--accent-ink);background:var(--accent);border-radius:999px;padding:2px 8px}
+.vpick input{position:absolute;width:1px;height:1px;opacity:0}
+.vpick:focus-within{border-color:var(--accent)}
+.vedit{display:flex;gap:12px;align-items:flex-start;background:var(--bg);border-radius:16px;padding:10px}
+.vedit video{width:110px;max-height:180px;border-radius:12px;background:#000;object-fit:cover;flex:none}
+.vctl{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+.vmsg{margin:0;font-size:13px;color:var(--muted)}
+.vlab{font-size:13px;font-weight:700}
+.vlab b{font-variant-numeric:tabular-nums;color:var(--accent)}
+.vctl input[type=range]{width:100%;accent-color:var(--accent)}
+.add .vdel{align-self:flex-start;font-family:var(--body);font-size:13px;font-weight:700;background:none;border:0;border-radius:0;padding:0;color:var(--muted);text-decoration:underline;cursor:pointer}
+.prog{height:6px;border-radius:999px;background:var(--line);overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+/* カードの動画 */
+.card .media{position:relative;border:0;padding:0;border-radius:14px;overflow:hidden;background:#000;cursor:pointer;display:block;width:100%}
+.card .media img,.card .media video{display:block;width:100%;max-height:340px;object-fit:cover;background:#000}
+.card .media .pl{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center}
+.card .media .pl::before{content:"";margin-left:4px;border-left:14px solid #fff;border-top:9px solid transparent;border-bottom:9px solid transparent}
+.card .media .du{position:absolute;right:8px;bottom:8px;font-size:11px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);border-radius:999px;padding:1px 8px;font-variant-numeric:tabular-nums}
+.card .media .sm{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--display);font-weight:800;letter-spacing:.1em}
+/* 並び替え */
+.bar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.sort{display:inline-flex;background:var(--surface);border:2px solid var(--line);border-radius:999px;padding:3px}
+.sort button{font-family:var(--display);font-weight:800;font-size:14px;border:0;border-radius:999px;padding:6px 14px;background:transparent;color:var(--muted);cursor:pointer}
+.sort button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.meta{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* カードの壁 */
+.wall{list-style:none;margin:0;padding:0;columns:2 170px;column-gap:10px}
+.card{break-inside:avoid;margin:0 0 10px;border-radius:20px;padding:14px 14px 12px;background:var(--tint);border:2px solid transparent;display:flex;flex-direction:column;gap:10px;position:relative}
+.card.big{padding:18px 16px 14px}
+.card.big .tx{font-size:20px}
+.card.mid .tx{font-size:17px}
+.card .tx{font-family:var(--display);font-weight:800;font-size:15px;line-height:1.45;overflow-wrap:anywhere;margin:0}
+.card .ft{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.card .new{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.06em}
+.card .rank{position:absolute;top:-9px;left:12px;font-family:var(--display);font-weight:800;font-size:11px;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:1px 9px}
+.wk{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-family:var(--display);font-weight:800;font-size:14px;border:2px solid var(--ink);color:var(--ink);background:var(--surface);border-radius:999px;padding:5px 12px;cursor:pointer;font-variant-numeric:tabular-nums}
+.wk .e{font-size:16px;line-height:1}
+.wk[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.wk.pop{animation:pop .45s ease}
+.wk:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
+@keyframes pop{0%{transform:scale(.85)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+.card.in{animation:rise .5s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.empty{column-span:all;background:var(--surface);border:2px dashed var(--line);border-radius:20px;padding:28px 16px;text-align:center;color:var(--muted);font-family:var(--display)}
+.status{font-size:13px;color:var(--muted);margin:0}
+footer{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
+@media (prefers-reduced-motion:reduce){.wk.pop,.card.in{animation:none}}
+/* ボタンを素早く押しても、ダブルタップの拡大にならないように */
+button,a,input{touch-action:manipulation}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">← ちぃむみーてぃんぐ2026 トップへ</a>
+  <p class="demo" id="demo" hidden>プレビュー表示中です。並んでいるカードはサンプルです。</p>
+
+  <header>
+    <h1><span>ちぃちゃん</span>の好きパフォーマンス</h1>
+    <p class="sub">その好きポイント「わかる！」🙌</p>
+    <p class="lead">ちぃちゃんのパフォーマンスの「ここが好き！」をカードにして集めよう。10秒の動画も付けられます。共感したカードに「わかる！」を押すだけでOK。わかるが多いカードほど大きくなります。</p>
+  </header>
+
+  <section class="add" aria-labelledby="addTitle">
+    <h2 id="addTitle">好きポイントをカードにする</h2>
+    <form id="af" autocomplete="off">
+      <input id="at" maxlength="40" placeholder="例：ターンしたときの髪の揺れ" aria-label="好きポイント（40文字まで）" required>
+      <button id="ago" type="submit">カードを出す</button>
+    </form>
+    <div class="row"><p class="hint" id="ah"></p><span id="ac">0 / 40</span></div>
+    <div class="vbox">
+      <label class="vpick" id="vpickLab" for="vfile"><span aria-hidden="true">🎬</span> 10秒動画を付ける<small>なくてもOK</small>
+        <input id="vfile" type="file" accept="video/*">
+      </label>
+      <div class="vedit" id="vedit" hidden>
+        <video id="vprev" playsinline muted preload="auto"></video>
+        <div class="vctl">
+          <p class="vmsg" id="vmsg"></p>
+          <div id="vrangeBox" hidden>
+            <label for="vstart" class="vlab">どこから10秒？ <b id="vfrom">0:00</b>〜<b id="vto">0:10</b></label>
+            <input id="vstart" type="range" min="0" max="0" step="0.1" value="0">
+          </div>
+          <button type="button" class="vdel" id="vclear">動画を外す</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="wallTitle" style="display:flex;flex-direction:column;gap:12px">
+    <div class="bar">
+      <h2 id="wallTitle" class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">わかる！カード</h2>
+      <div class="sort" role="group" aria-label="並び替え">
+        <button type="button" data-s="pop" aria-pressed="true">わかる順</button>
+        <button type="button" data-s="new" aria-pressed="false">新着順</button>
+      </div>
+      <span class="meta" id="meta"></span>
+    </div>
+    <ul class="wall" id="wall"></ul>
+    <p class="status" id="status">読み込み中…</p>
+  </section>
+
+  <footer>※ファンによる非公式サイトです</footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let cards=[], ver=-1, demo=false, sort="pop", timer=null, sending=false, justVoted=null;
+const seen=new Set();
+const playing=new Set();
+const TINTS=[["--t1","--w1"],["--t2","--w2"],["--t3","--w3"],["--t4","--w4"],["--t5","--w5"]];
+function hash(s){let h=0;for(const c of String(s))h=(h*31+c.codePointAt(0))|0;return Math.abs(h);}
+
+function render(){
+  const list=[...cards];
+  if(sort==="pop") list.sort((a,b)=>b.n-a.n||b.at-a.at); else list.sort((a,b)=>b.at-a.at);
+  const top=[...cards].sort((a,b)=>b.n-a.n||b.at-a.at);
+  const max=top.length?top[0].n:0;
+  const rankOf=new Map(top.slice(0,3).filter(c=>c.n>1).map((c,i)=>[c.id,i+1]));
+  const total=cards.reduce((s,c)=>s+c.n,0);
+  $("meta").textContent=cards.length?`${cards.length}枚・わかる！${total}`:"";
+  if(!list.length){ $("wall").replaceChildren(Object.assign(document.createElement("li"),{className:"empty",textContent:"まだカードがありません。最初の好きポイントを出してね！"})); return; }
+  const now=Date.now();
+  $("wall").replaceChildren(...list.map(c=>{
+    const li=document.createElement("li");
+    const r=max>1?c.n/max:0;
+    li.className="card"+(r>=0.66&&c.n>1?" big":r>=0.33&&c.n>1?" mid":"")+(seen.size&&!seen.has(c.id)?" in":"");
+    const [tint,ink]=TINTS[hash(c.id)%TINTS.length];
+    li.style.setProperty("--tint",`var(${tint})`); li.style.setProperty("--ink",`var(${ink})`);
+    if(rankOf.has(c.id)){ const rk=document.createElement("span"); rk.className="rank"; rk.textContent=`わかる！${rankOf.get(c.id)}位`; li.append(rk); }
+    if(c.video){
+      const md=document.createElement("button"); md.type="button"; md.className="media"; md.setAttribute("aria-label","動画を再生");
+      if(playing.has(c.id)){
+        const v=document.createElement("video"); v.src=c.videoUrl||`/api/wakaru/video?id=${c.id}`; v.controls=true; v.autoplay=true; v.playsInline=true; v.loop=true;
+        md.append(v); md.onclick=e=>e.stopPropagation();
+      }else{
+        if(c.thumbUrl||!demo){ const im=document.createElement("img"); im.alt=""; im.loading="lazy"; im.src=c.thumbUrl||`/api/wakaru/video?id=${c.id}&s=thumb`; im.onerror=()=>{ im.remove(); md.style.aspectRatio="9/12"; }; md.append(im); }
+        else { const sm=document.createElement("span"); sm.className="sm"; sm.textContent="SAMPLE"; md.style.background="linear-gradient(160deg,var(--w1),var(--w5))"; md.style.aspectRatio="3/4"; md.append(sm); }
+        const pl=document.createElement("span"); pl.className="pl"; md.append(pl);
+        if(c.dur){ const du=document.createElement("span"); du.className="du"; du.textContent=`0:${String(Math.round(c.dur)).padStart(2,"0")}`; md.append(du); }
+        md.onclick=()=>{ if(demo&&!c.videoUrl) return; playing.add(c.id); render(); };
+      }
+      li.append(md);
+    }
+    const tx=document.createElement("p"); tx.className="tx"; tx.textContent=c.text;
+    const ft=document.createElement("div"); ft.className="ft";
+    if(now-c.at<24*3600e3 && !demo){ const nw=document.createElement("span"); nw.className="new"; nw.textContent="NEW"; ft.append(nw); }
+    const b=document.createElement("button"); b.type="button"; b.className="wk"+(justVoted===c.id?" pop":"");
+    b.setAttribute("aria-pressed",!!c.mine);
+    b.setAttribute("aria-label",(c.mine?"わかる！を取り消す：":"わかる！：")+c.text);
+    b.innerHTML=`<span class="e" aria-hidden="true">🙌</span><span>わかる！</span><span>${c.n}</span>`;
+    b.onclick=()=>vote(c);
+    ft.append(b); li.append(tx,ft);
+    return li;
+  }));
+  justVoted=null;
+  for(const c of cards) seen.add(c.id);
+}
+
+async function vote(c){
+  const on=!c.mine;
+  c.mine=on; c.n=Math.max(0,c.n+(on?1:-1)); justVoted=on?c.id:null;
+  render();
+  if(demo) return;
+  try{
+    const r=await fetch("/api/wakaru/vote",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id:c.id,on})});
+    if(!r.ok) throw 0;
+  }catch(e){ $("status").textContent="送れませんでした。もう一度押してみてね。"; }
+  await load();
+}
+
+async function load(){
+  try{
+    const r=await fetch("/api/wakaru?v="+ver,{cache:"no-store"});
+    if(!r.ok) throw 0;
+    const d=await r.json();
+    $("status").textContent="カードが届くと自動で増えます";
+    if(d.same) return;
+    ver=d.ver; cards=d.cards;
+    if(!playing.size) render();
+  }catch(e){
+    if(ver===-1 && !demo) startDemo();
+    else if(!demo) $("status").textContent="接続が不安定です。自動でつなぎ直しています…";
+  }
+}
+function loop(){ clearTimeout(timer); if(demo) return; timer=setTimeout(async()=>{ if(!document.hidden) await load(); loop(); }, 5000); }
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden && !demo){ load(); loop(); } });
+
+function startDemo(){
+  demo=true; $("demo").hidden=false; $("status").textContent="プレビュー表示（サンプル）";
+  const S=[["ターンしたときの髪の揺れ",18],["歌い終わりのはにかみ笑顔",14],["サビ前の目線の配り方",11],["ラスサビの伸びる高音",9],["MCのゆるさとのギャップ",7],["指先まで丁寧なダンス",6],["客席を見渡す優しい顔",4],["キメのウインク",3],["汗でキラキラしてるとき",2],["笑いながら歌っちゃうところ",1]];
+  const t=Date.now();
+  cards=S.map(([text,n],i)=>({id:"s"+i,text,n,at:t-i*3600e3,mine:i===1,video:i===0||i===3,dur:i===0?10:8}));
+  render();
+}
+
+$("at").addEventListener("input",()=>{ $("ac").textContent=`${[...$("at").value].length} / 40`; });
+$("af").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const text=$("at").value.replace(/\s+/g," ").trim();
+  if(!text||sending) return;
+  sending=true; $("ago").disabled=true; $("ah").className="hint"; $("ah").textContent="";
+  try{
+    let clip=null;
+    if(vsrc){
+      $("ah").textContent="動画を10秒に切り取って、小さくしています…（動画と同じくらい時間がかかります）";
+      clip=await makeClip(vsrc.file, Number($("vstart").value)||0, Math.min(10, vsrc.dur||10), p=>{ $("ah").textContent=`動画を小さくしています… ${Math.round(p*100)}%`; });
+      if(!clip){ $("ah").textContent="この端末では動画を変換できませんでした。文字だけで出すか、別のブラウザで試してみてね。"; return; }
+    }
+    if(demo){ cards.unshift({id:"l"+Date.now(),text,n:1,at:Date.now(),mine:true,video:!!clip,dur:clip?clip.dur:0,videoUrl:clip?URL.createObjectURL(clip.blob):"",thumbUrl:clip?URL.createObjectURL(clip.thumb):""}); render(); $("at").value=""; $("ac").textContent="0 / 40"; clearVideo(); $("ah").className="hint ok"; $("ah").textContent="カードを出しました！（プレビューなので保存はされません）"+(clip?`（動画 ${(clip.blob.size/1e6).toFixed(1)}MB）`:""); return; }
+    let r;
+    if(clip){
+      $("ah").textContent="送っています…";
+      const fd=new FormData(); fd.append("text",text); fd.append("video",clip.blob,"clip"); fd.append("thumb",clip.thumb,"thumb.jpg"); fd.append("dur",String(clip.dur));
+      r=await fetch("/api/wakaru",{method:"POST",body:fd});
+    }else{
+      r=await fetch("/api/wakaru",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({text})});
+    }
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){ $("ah").textContent=d.error||"送れませんでした。少し待ってからもう一度どうぞ。"; return; }
+    $("at").value=""; $("ac").textContent="0 / 40"; clearVideo();
+    $("ah").className="hint ok"; $("ah").textContent=d.merged?"同じカードがあったので「わかる！」を押しました🙌":"カードを出しました！";
+    await load();
+  }catch(err){ $("ah").textContent="送れませんでした。通信を確認してもう一度どうぞ。"; }
+  finally{ sending=false; $("ago").disabled=false; }
+});
+document.querySelector(".sort").addEventListener("click",e=>{
+  const b=e.target.closest("[data-s]"); if(!b) return;
+  sort=b.dataset.s;
+  for(const x of document.querySelectorAll(".sort [data-s]")) x.setAttribute("aria-pressed",x===b);
+  render();
+});
+
+// ===== 10秒動画：えらぶ → どこから10秒か決める → スマホの中で小さくする =====
+let vsrc=null;
+const fmt=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,"0")}`;
+function clearVideo(){
+  if(vsrc) URL.revokeObjectURL(vsrc.url);
+  vsrc=null; $("vfile").value=""; $("vedit").hidden=true; $("vprev").removeAttribute("src"); $("vpickLab").hidden=false;
+}
+$("vclear").onclick=clearVideo;
+$("vfile").addEventListener("change",async()=>{
+  const f=$("vfile").files[0]; if(!f) return;
+  if(vsrc) URL.revokeObjectURL(vsrc.url);
+  const url=URL.createObjectURL(f);
+  const v=$("vprev"); v.src=url;
+  $("vedit").hidden=false; $("vpickLab").hidden=true; $("vmsg").textContent="動画を読み込んでいます…";
+  try{
+    await new Promise((ok,ng)=>{ v.onloadedmetadata=ok; v.onerror=ng; setTimeout(ng,15000); });
+    let dur=v.duration;
+    if(!isFinite(dur)){ v.currentTime=1e9; await new Promise(r=>{ v.ontimeupdate=r; setTimeout(r,2000); }); dur=v.duration; v.currentTime=0; }
+    vsrc={file:f,url,dur};
+    const long=dur>10.05;
+    $("vrangeBox").hidden=!long;
+    $("vstart").max=String(long?Math.max(0,dur-10):0); $("vstart").value="0"; updRange();
+    $("vmsg").textContent=long?`${fmt(dur)}の動画です。好きな10秒をえらんでね。`:`${dur.toFixed(1)}秒の動画を付けます。`;
+  }catch(e){ clearVideo(); $("ah").className="hint"; $("ah").textContent="この動画は読み込めませんでした。別の動画で試してみてね。"; }
+});
+function updRange(){
+  const s=Number($("vstart").value)||0; $("vfrom").textContent=fmt(s); $("vto").textContent=fmt(Math.min(s+10,vsrc?vsrc.dur:10));
+  try{ $("vprev").currentTime=s+0.05; }catch(e){}
+}
+$("vstart").addEventListener("input",updRange);
+
+// 動画を、長い辺720pxくらい・約1MBの10秒クリップに作り直す
+async function makeClip(file,start,len,onProg){
+  if(!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) return null;
+  // どのスマホでも再生しやすいH.264（mp4）を優先。作れない端末はwebmで作る
+  const types=["video/mp4;codecs=avc1.42E01E,mp4a.40.2","video/mp4;codecs=avc1,mp4a","video/mp4;codecs=avc1","video/webm;codecs=vp8,opus","video/webm;codecs=vp9,opus","video/webm","video/mp4"];
+  const mime=types.find(t=>{ try{ return MediaRecorder.isTypeSupported(t); }catch(e){ return false; } });
+  if(!mime) return null;
+  const url=URL.createObjectURL(file);
+  const v=document.createElement("video");
+  v.src=url; v.playsInline=true; v.preload="auto"; v.muted=false;
+  v.style.cssText="position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none";
+  document.body.append(v);
+  let ac=null;
+  try{
+    await new Promise((ok,ng)=>{ v.onloadedmetadata=ok; v.onerror=ng; setTimeout(ng,15000); });
+    const W0=v.videoWidth||720, H0=v.videoHeight||1280, sc=Math.min(1,720/Math.max(W0,H0));
+    const c=document.createElement("canvas"); c.width=Math.round(W0*sc/2)*2; c.height=Math.round(H0*sc/2)*2;
+    const g=c.getContext("2d");
+    const stream=c.captureStream(30);
+    try{
+      ac=new (window.AudioContext||window.webkitAudioContext)();
+      const src=ac.createMediaElementSource(v), dest=ac.createMediaStreamDestination();
+      src.connect(dest);   // 音は録るだけで、スピーカーには出さない
+      dest.stream.getAudioTracks().forEach(t=>stream.addTrack(t));
+    }catch(e){}
+    v.currentTime=start; await new Promise(r=>{ v.onseeked=r; setTimeout(r,3000); });
+    g.drawImage(v,0,0,c.width,c.height);
+    // 一覧用の小さい画像（最初の場面）
+    const t=document.createElement("canvas"); t.width=t.height=240;
+    const side=Math.min(c.width,c.height); t.getContext("2d").drawImage(c,(c.width-side)/2,(c.height-side)/2,side,side,0,0,240,240);
+    const thumb=await new Promise(r=>t.toBlob(r,"image/jpeg",0.8));
+    const chunks=[];
+    const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:850000,audioBitsPerSecond:64000});
+    rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+    const stopped=new Promise(r=>rec.onstop=r);
+    let raf=0, done=false;
+    const draw=()=>{ if(done) return; g.drawImage(v,0,0,c.width,c.height); const p=(v.currentTime-start)/len; onProg&&onProg(Math.max(0,Math.min(1,p)));
+      if(v.currentTime>=start+len||v.ended){ finish(); return; } raf=requestAnimationFrame(draw); };
+    const finish=()=>{ if(done) return; done=true; cancelAnimationFrame(raf); v.pause(); try{ rec.stop(); }catch(e){} };
+    rec.start(250);
+    if(ac&&ac.state==="suspended") await ac.resume();
+    await v.play();
+    raf=requestAnimationFrame(draw);
+    setTimeout(finish,(len+4)*1000);   // 念のため
+    await stopped;
+    const blob=new Blob(chunks,{type:mime.split(";")[0]});
+    if(!blob.size || blob.size>2_900_000) return null;
+    return {blob,thumb,dur:Math.min(len,(v.duration||len)-start)};
+  }catch(e){ return null; }
+  finally{ try{ ac&&ac.close(); }catch(e){} v.remove(); URL.revokeObjectURL(url); }
+}
+
+render(); load().then(loop);
+</script>
+</body>
+</html>

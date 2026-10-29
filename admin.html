@@ -92,6 +92,7 @@ button,a,label,select,input,textarea,summary,.cal,.tl-scroll,.cloud{touch-action
     <button role="tab" data-tab="letters" aria-selected="false">メッセージ<span class="cnt" id="c-letters"></span></button>
     <button role="tab" data-tab="tiktok" aria-selected="false">TikTok<span class="cnt" id="c-tiktok"></span></button>
     <button role="tab" data-tab="photos" aria-selected="false">写真<span class="cnt" id="c-photos"></span><span class="cnt wait" id="c-wait" hidden></span></button>
+    <button role="tab" data-tab="wakaru" aria-selected="false">わかる<span class="cnt" id="c-wakaru"></span></button>
   </div>
   <section id="lettersView" hidden style="display:flex;flex-direction:column;gap:12px">
     <p class="msg" id="lmsg"></p>
@@ -101,6 +102,15 @@ button,a,label,select,input,textarea,summary,.cal,.tl-scroll,.cloud{touch-action
     </div>
     <textarea id="copyout" hidden readonly aria-label="コピー用テキスト"></textarea>
     <ul id="letters"></ul>
+  </section>
+  <section id="wakaruView" hidden style="display:flex;flex-direction:column;gap:12px">
+    <p class="msg" id="wkmsg"></p>
+    <form id="wkf" class="mrow" autocomplete="off">
+      <input id="wkt" maxlength="40" placeholder="最初のカードを用意する（例：ターンしたときの髪の揺れ）" aria-label="カードの文">
+      <button type="submit">カードを追加</button>
+    </form>
+    <div class="filters"><button class="sub" id="wkreload" type="button">更新</button></div>
+    <ul id="wklist"></ul>
   </section>
   <section id="photosView" hidden style="display:flex;flex-direction:column;gap:12px">
     <p class="msg" id="phmsg"></p>
@@ -247,13 +257,14 @@ $("tabs").addEventListener("click",e=>{
   const b=e.target.closest("[data-tab]"); if(!b) return;
   for(const x of $("tabs").querySelectorAll("[data-tab]")) x.setAttribute("aria-selected",x===b);
   const tab=b.dataset.tab;
-  $("lettersView").hidden=tab!=="letters"; $("projectsView").hidden=tab!=="projects"; $("tiktokView").hidden=tab!=="tiktok"; $("photosView").hidden=tab!=="photos";
+  $("lettersView").hidden=tab!=="letters"; $("projectsView").hidden=tab!=="projects"; $("tiktokView").hidden=tab!=="tiktok"; $("photosView").hidden=tab!=="photos"; $("wakaruView").hidden=tab!=="wakaru";
   $("postsView").hidden=tab!=="posts";
   if(tab==="letters") loadLetters();
   if(tab==="projects") loadProjects();
   if(tab==="tiktok") loadTT();
   if(tab==="posts") loadWords();
   if(tab==="photos") loadPhotos();
+  if(tab==="wakaru") loadWK();
   loadCounts();
 });
 const NUM="①②③④⑤⑥⑦⑧⑨⑩";
@@ -425,10 +436,36 @@ async function loadCounts(){
     const c=await call("counts");
     $("c-projects").textContent=`${c.projects}/${c.projectsTotal}`;
     $("c-posts").textContent=c.posts; $("c-letters").textContent=c.letters;
-    $("c-tiktok").textContent=c.tiktok; $("c-photos").textContent=c.photos;
+    $("c-tiktok").textContent=c.tiktok; $("c-photos").textContent=c.photos; $("c-wakaru").textContent=c.wakaru??"";
     $("c-wait").hidden=!c.photosPending; $("c-wait").textContent=c.photosPending?`待ち${c.photosPending}`:"";
   }catch(e){}
 }
+let wkItems=[], pendingW=null, wkVid=[0,1];
+async function loadWK(){
+  try{ const d=await call("wk_list"); wkItems=d.items; wkVid=[d.videoBytes,d.videoLimit]; drawWK(); }catch(e){ $("wkmsg").textContent=e.message; }
+}
+function drawWK(){
+  $("wkmsg").textContent=(wkItems.length?`${wkItems.length}枚のカード（新しい順）。「かくす」とページから外れます。`:"まだカードはありません。上の欄から最初のカードを用意できます。")+`　動画の容量：${(wkVid[0]/1e6).toFixed(0)}MB / ${(wkVid[1]/1e6).toFixed(0)}MB`;
+  $("wklist").replaceChildren(...wkItems.map(x=>{
+    const li=document.createElement("li"); if(x.hidden) li.className="hid";
+    const t=document.createElement("span"); t.className="t"; t.textContent=x.text;
+    const m=document.createElement("span"); m.className="m"; m.textContent=`🙌${x.n}・${new Date(x.at).toLocaleString("ja-JP")}`;
+    const parts=[t,m];
+    if(x.seed){ const g=document.createElement("span"); g.className="tag"; g.textContent="あなたが用意"; parts.push(g); }
+    if(x.vsize){ const g=document.createElement("a"); g.className="pv"; g.href=`/api/wakaru/video?id=${x.id}`; g.target="_blank"; g.rel="noopener"; g.textContent=`🎬 動画（${(x.vsize/1e6).toFixed(1)}MB）`; parts.push(g); }
+    if(x.hidden){ const g=document.createElement("span"); g.className="tag"; g.textContent="かくし中"; parts.push(g); }
+    const tog=document.createElement("button"); tog.className="sub"; tog.textContent=x.hidden?"もどす":"かくす";
+    tog.onclick=async()=>{ try{ await call(x.hidden?"wk_show":"wk_hide",x.id); await loadWK(); }catch(e){ $("wkmsg").textContent=e.message; } };
+    const del=document.createElement("button"); del.className="del"; del.textContent=pendingW===x.id?"本当に消す":"消す";
+    del.onclick=async()=>{ if(pendingW!==x.id){ pendingW=x.id; drawWK(); return; } pendingW=null; try{ await call("wk_delete",x.id); await loadWK(); }catch(e){ $("wkmsg").textContent=e.message; } };
+    li.append(...parts,tog,del); return li;
+  }));
+}
+$("wkf").addEventListener("submit",async e=>{
+  e.preventDefault(); const text=$("wkt").value.trim(); if(!text) return;
+  try{ await call("wk_add",null,{text}); $("wkt").value=""; $("wkmsg").textContent="カードを追加しました。"; await loadWK(); loadCounts(); }catch(err){ $("wkmsg").textContent=err.message; }
+});
+$("wkreload").addEventListener("click",loadWK);
 if(key) refresh();
 </script>
 </body>
