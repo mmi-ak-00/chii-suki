@@ -26,6 +26,12 @@ button.ban{background:transparent;color:#7a5a00;border:1px dashed #b08900}
 button.ban.armed{background:#7a5a00;color:#fff;border-style:solid}
 .msg{color:var(--muted);min-height:1.4em;margin:0}
 .filters{display:flex;gap:8px;flex-wrap:wrap}
+.tlx{display:flex;flex-direction:column;gap:6px;background:var(--surface,#fff);border:1px dashed var(--line,#f1d9e2);border-radius:14px;padding:12px}
+.tlx > button{align-self:flex-start}
+.tlx .m{margin:0}
+.tlxbtns{display:flex;gap:8px;flex-wrap:wrap}
+#tlxImgs{display:flex;flex-direction:column;gap:10px}
+#tlxImgs img{width:100%;height:auto;border-radius:10px;box-shadow:0 2px 10px rgba(80,30,50,.15)}
 .filters button[aria-pressed="true"]{outline:2px solid var(--fg)}
 ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 li{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
@@ -132,6 +138,10 @@ button,a,label,select,input,textarea,summary,.cal,.tl-scroll,.cloud{touch-action
       <button class="sub" data-pf="pending" aria-pressed="false" type="button">確認待ち</button>
       <button class="sub" data-pf="hidden" aria-pressed="false" type="button">かくした</button>
       <button class="sub" id="phreload" type="button">更新</button>
+    </div>
+    <div class="tlx">
+      <a class="pv" href="/kikaku4?hozon" target="_blank" rel="noopener">📸 年表を画像で保存する（企画④のページが開きます）</a>
+      <span class="m">開いたページの年表の下にある「この年表を画像で保存」を押すと、年表の全体が横長の画像1枚になります。このボタンは、このリンクから開いたときだけ出ます。</span>
     </div>
     <ul class="phgrid" id="phlist"></ul>
   </section>
@@ -478,6 +488,7 @@ document.querySelectorAll("[data-pf]").forEach(b=>b.addEventListener("click",()=
   phFilter=b.dataset.pf; document.querySelectorAll("[data-pf]").forEach(x=>x.setAttribute("aria-pressed",x===b)); drawPhotos();
 }));
 $("phreload").addEventListener("click",loadPhotos);
+
 $("phAppr").addEventListener("change",async()=>{
   try{ await call("photo_approval",null,{on:$("phAppr").checked}); $("phmsg").textContent=$("phAppr").checked?"これから届く写真は、あなたが「載せる」を押すまで年表に出ません。":"これから届く写真は、すぐ年表に載ります。"; }
   catch(e){ $("phmsg").textContent=e.message; }
