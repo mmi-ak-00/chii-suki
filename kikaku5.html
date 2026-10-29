@@ -98,6 +98,14 @@ h1 span{color:var(--accent)}
 .ph{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1.5px;background:#fff;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.35);pointer-events:none}
 .add .vdel{align-self:flex-start;font-family:var(--body);font-size:13px;font-weight:700;background:none;border:0;border-radius:0;padding:0;color:var(--muted);text-decoration:underline;cursor:pointer}
 .vtip{margin:-2px 0 0;font-size:12px;color:var(--muted)}
+.vwrap{position:relative;align-self:center;max-width:100%;line-height:0}
+.vwrap canvas{position:absolute;inset:0;width:100%;height:100%;border-radius:12px}
+.vwait{display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:14px;padding:10px 14px;font-size:13px;font-weight:700}
+.vwait .spin{flex:none;width:18px;height:18px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.vwait small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.add .vwait button{margin-left:auto;flex:none;font-family:var(--body);font-size:12px;font-weight:700;padding:4px 10px;background:none;color:var(--muted);border:1.5px solid var(--line)}
+.vdbg{margin:0;font-size:12px;font-family:ui-monospace,monospace;background:#fff8d6;border-radius:8px;padding:6px 8px;line-height:1.5}
 .vstep{margin:0;font-family:var(--display);font-weight:800;font-size:13px;display:flex;align-items:center;gap:6px}
 .vstep b{width:20px;height:20px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:12px;display:inline-flex;align-items:center;justify-content:center}
 .add .vgo{align-self:flex-start;font-size:14px;padding:8px 16px;background:var(--fg);color:var(--bg)}
@@ -167,8 +175,10 @@ button,a,input{touch-action:manipulation}
           <input id="vfile" type="file" accept="video/*">
         </label>
         <p class="vtip" id="vtip">1GBをこえる長い動画もそのまま選べます（使うのは選んだ10秒だけ）。iPhoneは選んだあと少し「準備中」になることがあります。</p>
+        <div class="vwait" id="vwait" hidden role="status"><span class="spin" aria-hidden="true"></span><span><span id="vwaitT">iPhoneが動画を準備しています…</span><small>選んだ動画を、iPhoneがサイトに渡す準備をしています。画質が高い動画ほど時間がかかります。</small></span><button type="button" id="vwaitX">やめる</button></div>
+        <p class="vdbg" id="vdbg" hidden></p>
         <div class="vedit" id="vedit" hidden>
-          <video id="vprev" playsinline muted preload="auto"></video>
+          <div class="vwrap"><video id="vprev" playsinline muted preload="metadata"></video><canvas id="vcover" hidden></canvas></div>
           <div class="vctl">
             <p class="vstep"><b>1</b> 使うところをえらぶ（10秒まで）</p>
             <p class="vmsg" id="vmsg"></p>
@@ -349,21 +359,46 @@ document.querySelector(".sort").addEventListener("click",e=>{
 
 // ===== 10秒動画：えらぶ → どこから10秒か決める → スマホの中で小さくする =====
 let vsrc=null;
+// ===== 計測（URLの最後に ?keisoku を付けたときだけ表示） =====
+const KEISOKU=/[?&]keisoku/.test(location.search);
+let T={};
+function mark(k){ if(T[k]==null) T[k]=performance.now(); if(KEISOKU) showDbg(); }
+function showDbg(){
+  const s=(a,b)=>T[a]!=null&&T[b]!=null?((T[b]-T[a])/1000).toFixed(1)+"秒":"—";
+  $("vdbg").hidden=false;
+  $("vdbg").textContent=`計測${T.info?"（"+T.info+"）":""}\nA ボタン→選択画面を閉じた：${s("tap","back")}\nB 閉じた→動画が届いた：${s("back","change")}\nC 届いた→範囲選択が出た：${s("change","ready")}\nD コマ画像がそろった：${s("ready","thumbs")}`;
+  $("vdbg").style.whiteSpace="pre-line";
+}
+// ===== 動画を選んでいる間・iPhoneが準備している間の表示 =====
+let picking=false, waitTimer=0;
+function showWait(){
+  $("vwait").hidden=false; clearInterval(waitTimer);
+  const tick=()=>{ const from=T.back??T.tap, sec=Math.floor((performance.now()-from)/1000);
+    $("vwaitT").textContent=`iPhoneが動画を準備しています…${sec>=1?` ${sec}秒`:""}`; };
+  tick(); waitTimer=setInterval(tick,500);
+}
+function hideWait(){ $("vwait").hidden=true; clearInterval(waitTimer); }
+$("vfile").addEventListener("click",()=>{ T={}; mark("tap"); picking=true; showWait(); });
+const backNow=()=>{ if(picking&&T.tap!=null&&T.back==null&&performance.now()-T.tap>300) mark("back"); };
+window.addEventListener("focus",backNow);
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) backNow(); });
+$("vfile").addEventListener("cancel",()=>{ picking=false; hideWait(); });
+$("vwaitX").addEventListener("click",()=>{ picking=false; hideWait(); });
 const fmt=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,"0")}`;
 const fmt1=t=>`${Math.floor(t/60)}:${(t%60).toFixed(1).padStart(4,"0")}`;
 const MAXLEN=10, MINLEN=1, VIEWMAX=30;   // 下の帯に出すのは最大30秒ぶん（細かく選べるように）
-let sel={s:0,e:10}, view={v0:0,len:10}, thumbJob=0, thumbV=null;
+let sel={s:0,e:10}, view={v0:0,len:10}, thumbJob=0;
 function clearVideo(){
-  stopLook(); thumbJob++;
+  stopLook(); pauseThumbs(); hideWait();
   if(vsrc){ URL.revokeObjectURL(vsrc.url); if(vsrc.clipUrl) URL.revokeObjectURL(vsrc.clipUrl); }
   $("vcomp").textContent="選んだところを圧縮する"; $("vcomp").classList.remove("done"); $("vcomp").disabled=false; $("vres").hidden=true; $("vprog").hidden=true; $("vtip").hidden=false;
   vsrc=null; $("vfile").value=""; $("vedit").hidden=true; $("vprev").removeAttribute("src"); $("vpickLab").hidden=false;
-  if(thumbV){ thumbV.removeAttribute("src"); thumbV.load(); }
 }
 $("vclear").onclick=clearVideo;
 $("vfile").addEventListener("change",async()=>{
-  const f=$("vfile").files[0]; if(!f) return;
-  if(vsrc) URL.revokeObjectURL(vsrc.url);
+  const f=$("vfile").files[0]; picking=false; hideWait(); if(!f) return;
+  mark("back"); mark("change"); T.info=`${f.size>1e9?(f.size/1e9).toFixed(2)+"GB":(f.size/1e6).toFixed(1)+"MB"}・${f.type||"形式不明"}`;
+  if(vsrc){ URL.revokeObjectURL(vsrc.url); pauseThumbs(); }
   const url=URL.createObjectURL(f);
   const v=$("vprev"); v.src=url;
   $("vedit").hidden=false; $("vpickLab").hidden=true; $("vrangeBox").hidden=true;
@@ -376,9 +411,17 @@ $("vfile").addEventListener("change",async()=>{
     $("vtip").hidden=true; resetClip();
     sel={s:0,e:Math.min(MAXLEN,dur)};
     view={v0:0,len:Math.min(dur,VIEWMAX)};
+    if(vsrc.dur<=MAXLEN+0.05){
+      // 10秒以内なら、範囲選びはしないで、そのまま圧縮へ
+      $("vrangeBox").hidden=true;
+      $("vmsg").textContent=`${dur.toFixed(1)}秒の動画なので、そのまま使えます。下の「圧縮する」を押してね。`;
+      mark("ready"); mark("thumbs"); seekPrev(0); return;
+    }
     $("vrangeBox").hidden=false; $("ovwBox").hidden=dur<=VIEWMAX; $("ovwEnd").textContent=fmt(dur);
-    $("vmsg").textContent=dur>MAXLEN+0.05?`${fmt(dur)}の動画です。使いたいところを枠でかこんでね。`:`${dur.toFixed(1)}秒の動画です。このまま使うか、枠で短くしてね。`;
-    drawSel(); seekPrev(sel.s); makeThumbs();
+    $("vmsg").textContent=`${fmt(dur)}の動画です。使いたいところを枠でかこんでね。`;
+    drawSel(); buildFrames(); mark("ready");
+    // 範囲選択を先に出して、コマ画像はあとから
+    clearTimeout(thumbT); thumbT=setTimeout(makeThumbs,350);
   }catch(e){ clearVideo(); $("ah").className="hint"; $("ah").textContent="この動画は読み込めませんでした。別の動画で試してみてね。"; }
 });
 function resetClip(){
@@ -403,27 +446,39 @@ function drawSel(){
     Object.assign($("ovwSel").style,{left:(sel.s/D*100)+"%",width:((sel.e-sel.s)/D*100)+"%"});
   }
 }
-// 下の帯のコマ画像を作る（別の見えない動画で、1コマずつ取り出す）
-async function makeThumbs(){
-  if(!vsrc) return;
-  const job=++thumbJob, box=$("frames"), H=box.clientHeight||56, W=fw();
+// 下の帯のコマ画像（iPhoneの負担を減らすため、見えている動画1本だけで順番に作る）
+let thumbCs=[], lastW=0;
+function buildFrames(){
+  thumbJob++;
+  const box=$("frames"), H=box.clientHeight||56, W=fw(); lastW=W;
   const cw=Math.max(16,Math.round(H*Math.min(vsrc.ar,1.8))), n=Math.max(1,Math.ceil(W/cw)), dpr=Math.min(2,window.devicePixelRatio||1);
-  const cs=[]; for(let i=0;i<n;i++){ const c=document.createElement("canvas"); c.width=cw*dpr; c.height=H*dpr; c.style.width=cw+"px"; cs.push(c); }
-  box.replaceChildren(...cs);
-  if(!thumbV){ thumbV=document.createElement("video"); thumbV.muted=true; thumbV.playsInline=true; thumbV.setAttribute("playsinline",""); thumbV.preload="auto"; }
-  if(thumbV.src!==vsrc.url){ thumbV.src=vsrc.url; await new Promise(r=>{ thumbV.onloadeddata=r; thumbV.onerror=r; setTimeout(r,8000); }); }
-  for(let i=0;i<n;i++){
-    if(job!==thumbJob) return;
-    const t=Math.min(vsrc.dur-0.05,view.v0+(i+0.5)*cw/W*view.len);
-    if(thumbV.fastSeek) thumbV.fastSeek(Math.max(0,t)); else thumbV.currentTime=Math.max(0,t);   // iPhoneは近くの区切りへ素早く飛ぶ方法を使う
-    await new Promise(r=>{ thumbV.onseeked=r; setTimeout(r,1500); });
-    if(job!==thumbJob) return;
+  thumbCs=[]; for(let i=0;i<n;i++){ const c=document.createElement("canvas"); c.width=cw*dpr; c.height=H*dpr; c.style.width=cw+"px"; c._t=Math.min(vsrc.dur-0.05,view.v0+(i+0.5)*cw/W*view.len); thumbCs.push(c); }
+  box.replaceChildren(...thumbCs);
+}
+const busyNow=()=>!vsrc||vsrc.busy||drag||odrag!=null||lookRaf;
+function pauseThumbs(){ thumbJob++; $("vcover").hidden=true; }
+function resumeThumbs(){ if(vsrc&&thumbCs.some(c=>!c._ok)){ clearTimeout(thumbT); thumbT=setTimeout(makeThumbs,400); } }
+async function makeThumbs(){
+  if(!vsrc||busyNow()) return;
+  const job=++thumbJob, v=$("vprev");
+  const todo=thumbCs.filter(c=>!c._ok); if(!todo.length) return;
+  // 作っている間、上の画面がパラパラ変わらないように、今の場面の絵をかぶせておく
+  const cv=$("vcover");
+  try{ cv.width=v.videoWidth||2; cv.height=v.videoHeight||2; cv.getContext("2d").drawImage(v,0,0,cv.width,cv.height); cv.hidden=false; }catch(e){}
+  for(const c of todo){
+    if(job!==thumbJob||busyNow()){ cv.hidden=true; return; }
+    if(v.fastSeek) v.fastSeek(Math.max(0,c._t)); else v.currentTime=Math.max(0,c._t);   // iPhoneは近くの区切りへ素早く飛ぶ方法を使う
+    await new Promise(r=>{ v.onseeked=r; setTimeout(r,1500); });
+    if(job!==thumbJob||busyNow()){ cv.hidden=true; return; }
     try{
-      const g=cs[i].getContext("2d"), vw=thumbV.videoWidth, vh=thumbV.videoHeight; if(!vw) continue;
-      const s=Math.max(cs[i].width/vw,cs[i].height/vh);
-      g.drawImage(thumbV,(cs[i].width-vw*s)/2,(cs[i].height-vh*s)/2,vw*s,vh*s);
+      const g=c.getContext("2d",{willReadFrequently:true}), vw=v.videoWidth, vh=v.videoHeight; if(!vw) continue;   // 小さい絵なので、画面の部品ではなく普通の絵として描く
+      const s=Math.max(c.width/vw,c.height/vh);
+      g.drawImage(v,(c.width-vw*s)/2,(c.height-vh*s)/2,vw*s,vh*s); c._ok=true;
     }catch(e){}
   }
+  // 元の場面にもどしてから、かぶせた絵を外す
+  v.currentTime=sel.s+0.02; await new Promise(r=>{ v.onseeked=r; setTimeout(r,1500); });
+  if(job===thumbJob){ cv.hidden=true; mark("thumbs"); }
 }
 // 大きい画面の動画を、選んでいる位置に合わせる（動かしている間は間引く）
 let seekWant=null, seeking=false;
@@ -438,12 +493,12 @@ let thumbT=0;
 function setView(v0){
   const nv=Math.max(0,Math.min(vsrc.dur-view.len,v0));
   if(Math.abs(nv-view.v0)<1e-6) return;
-  view.v0=nv; clearTimeout(thumbT); thumbT=setTimeout(makeThumbs,250);
+  view.v0=nv; buildFrames(); resumeThumbs();
 }
 // 枠を動かす・のばす
 let drag=null;
 $("strip").addEventListener("pointerdown",e=>{
-  if(!vsrc||vsrc.busy) return; stopLook();
+  if(!vsrc||vsrc.busy) return; stopLook(); pauseThumbs();
   const mode=e.target.closest("#hL")?"l":e.target.closest("#hR")?"r":e.target.closest("#win")?"m":"tap";
   const r=$("frames").getBoundingClientRect();
   if(mode==="tap"){   // 枠の外をタップしたら、そこへ枠を動かす
@@ -465,7 +520,7 @@ $("strip").addEventListener("pointermove",e=>{
   if(sel.s<view.v0) setView(sel.s); else if(sel.e>view.v0+view.len) setView(sel.e-view.len);
   drawSel(); seekPrev(drag.mode==="r"?sel.e:sel.s);
 });
-const endDrag=e=>{ if(drag&&e.pointerId===drag.id){ drag=null; seekPrev(sel.s); } };
+const endDrag=e=>{ if(drag&&e.pointerId===drag.id){ drag=null; seekPrev(sel.s); resumeThumbs(); } };
 $("strip").addEventListener("pointerup",endDrag); $("strip").addEventListener("pointercancel",endDrag);
 // 全体のどのあたり（長い動画だけ）：動かすと下の帯が切りかわり、枠も一緒に移る
 let odrag=null;
@@ -476,17 +531,18 @@ function ovwAt(e){
   sel.s=Math.max(view.v0,Math.min(view.v0+view.len-L,view.v0+off)); sel.e=sel.s+L;
   drawSel(); seekPrev(sel.s);
 }
-$("ovw").addEventListener("pointerdown",e=>{ if(!vsrc||vsrc.busy) return; stopLook(); if(vsrc.clip) resetClip(); odrag=e.pointerId; try{ $("ovw").setPointerCapture(e.pointerId); }catch(_){} ovwAt(e); e.preventDefault(); });
+$("ovw").addEventListener("pointerdown",e=>{ if(!vsrc||vsrc.busy) return; stopLook(); pauseThumbs(); if(vsrc.clip) resetClip(); odrag=e.pointerId; try{ $("ovw").setPointerCapture(e.pointerId); }catch(_){} ovwAt(e); e.preventDefault(); });
 $("ovw").addEventListener("pointermove",e=>{ if(odrag===e.pointerId) ovwAt(e); });
-$("ovw").addEventListener("pointerup",()=>{ odrag=null; }); $("ovw").addEventListener("pointercancel",()=>{ odrag=null; });
-window.addEventListener("resize",()=>{ if(vsrc&&!$("vedit").hidden){ drawSel(); clearTimeout(thumbT); thumbT=setTimeout(makeThumbs,250); } });
+$("ovw").addEventListener("pointerup",()=>{ odrag=null; resumeThumbs(); }); $("ovw").addEventListener("pointercancel",()=>{ odrag=null; resumeThumbs(); });
+window.addEventListener("resize",()=>{ if(vsrc&&!$("vedit").hidden&&!$("vrangeBox").hidden&&fw()!==lastW){ lastW=fw(); drawSel(); pauseThumbs(); buildFrames(); resumeThumbs(); } });
 // ▶：選んだところを音なしで流して確かめる（白い線が今の位置）
 let lookRaf=0;
-function stopLook(){ if(!lookRaf) return; cancelAnimationFrame(lookRaf); lookRaf=0; $("vlook").textContent="▶"; $("ph").hidden=true; const v=$("vprev"); v.pause(); }
+function stopLook(){ if(!lookRaf) return; cancelAnimationFrame(lookRaf); lookRaf=0; $("vlook").textContent="▶"; $("ph").hidden=true; const v=$("vprev"); v.pause(); resumeThumbs(); }
 $("vlook").addEventListener("click",()=>{
   if(!vsrc||vsrc.busy) return;
   if(vsrc.clip){ const v=$("vprev"); v.currentTime=0; v.play().catch(()=>{}); return; }   // 圧縮後は、できあがった動画を流す
   if(lookRaf){ stopLook(); seekPrev(sel.s); return; }
+  pauseThumbs();
   const v=$("vprev"); v.muted=true; v.currentTime=sel.s+0.02; v.play().catch(()=>{});
   $("vlook").textContent="■"; $("ph").hidden=false;
   const tick=()=>{ const t=v.currentTime; $("ph").style.left=(16+t2x(Math.max(sel.s,t)))+"px";
@@ -500,7 +556,7 @@ $("vcomp").addEventListener("click",async()=>{
   if(!vsrc||vsrc.busy) return;
   const v=$("vprev");
   if(vsrc.clip){ return; }
-  stopLook();
+  stopLook(); pauseThumbs();
   vsrc.busy=true;
   // ↓ ここまでを、押した瞬間（awaitの前）に済ませる
   try{ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); audioCtx.resume(); }catch(e){ audioCtx=null; }
