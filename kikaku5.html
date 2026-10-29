@@ -98,6 +98,23 @@ h1 span{color:var(--accent)}
 .ph{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1.5px;background:#fff;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.35);pointer-events:none}
 .add .vdel{align-self:flex-start;font-family:var(--body);font-size:13px;font-weight:700;background:none;border:0;border-radius:0;padding:0;color:var(--muted);text-decoration:underline;cursor:pointer}
 .vtip{margin:-2px 0 0;font-size:12px;color:var(--muted)}
+.vguide{display:flex;flex-direction:column;gap:10px;background:var(--bg);border:2px solid var(--line);border-radius:16px;padding:12px 14px}
+.vguide .gh{margin:0;font-family:var(--display);font-weight:800;font-size:15px}
+.vguide .gi{display:flex;gap:12px;align-items:flex-start}
+.vguide .gi p{margin:0;font-size:13px;line-height:1.6}
+.vguide .gi small{display:block;color:var(--muted);font-size:12px}
+.gthumb{position:relative;flex:none;width:56px;height:56px;border-radius:6px;background:linear-gradient(160deg,#cfe3f5,#a9c6e6 55%,#e9d6c9);overflow:hidden}
+.gthumb .ring{position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;border:2.5px solid rgba(255,255,255,.95);box-shadow:0 0 0 1px rgba(0,0,0,.15)}
+.gthumb .ring::after{content:"";position:absolute;inset:3px;border-radius:50%;background:conic-gradient(rgba(255,255,255,.95) 0 var(--p,25%),transparent 0);animation:fill 2.4s linear infinite}
+@property --p{syntax:"<percentage>";inherits:false;initial-value:0%}
+@keyframes fill{from{--p:0%}to{--p:100%}}
+.gthumb .ck{position:absolute;right:3px;bottom:3px;width:16px;height:16px;border-radius:50%;background:#2f7cf6;color:#fff;font-size:10px;line-height:16px;text-align:center;border:1.5px solid #fff}
+.gico{flex:none;width:56px;text-align:center;font-size:28px;line-height:56px}
+.gbtns{display:flex;align-items:center;gap:10px}
+.gpick{font-family:var(--display);font-weight:800;font-size:15px;border-radius:999px;padding:10px 20px;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+.add .gx{font-family:var(--body);font-weight:700;font-size:13px;padding:6px 12px;background:none;color:var(--muted);border:1.5px solid var(--line)}
+.gskip{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.add .gskip input{width:18px;height:18px;flex:none;margin:0;padding:0;border:0;accent-color:var(--accent)}
 .vwrap{position:relative;align-self:center;max-width:100%;line-height:0}
 .vwrap canvas{position:absolute;inset:0;width:100%;height:100%;border-radius:12px}
 .vwait{display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:14px;padding:10px 14px;font-size:13px;font-weight:700}
@@ -174,7 +191,23 @@ button,a,input{touch-action:manipulation}
         <label class="vpick" id="vpickLab" for="vfile"><span aria-hidden="true">🎬</span> 10秒動画を付ける<small>なくてもOK</small>
           <input id="vfile" type="file" accept="video/*">
         </label>
-        <p class="vtip" id="vtip">長い動画もそのまま選べます（使うのは選んだ10秒だけ）。iPhoneは動画の長さに合わせて準備に時間がかかるので、先に写真アプリの「編集」で短く切っておくと早くなります。</p>
+        <p class="vtip" id="vtip">長い動画もそのまま選べます（使うのは選んだ10秒だけ）。</p>
+        <div class="vguide" id="vguide" hidden>
+          <p class="gh">動画を選ぶ前に</p>
+          <div class="gi">
+            <span class="gthumb" aria-hidden="true"><span class="ring"></span><span class="ck">✓</span></span>
+            <p>次の画面で動画をタップすると、動画の上に<b>「◯」</b>が出ます。iPhoneが動画を準備している印なので、<b>◯が一周するまで、そのまま待ってね。</b><small>40秒くらいの動画で20秒ほどかかります。</small></p>
+          </div>
+          <div class="gi">
+            <span class="gico" aria-hidden="true">✂️</span>
+            <p><b>早く終わらせたいときは</b>、先に写真アプリで動画を開いて「編集」→ 使いたいところだけに切って →「完了」→「ビデオを新規クリップとして保存」。短い動画にしておくと、すぐ選べます。</p>
+          </div>
+          <div class="gbtns">
+            <label class="gpick" for="vfile">🎬 動画をえらぶ</label>
+            <button type="button" class="gx" id="vguideX">やめる</button>
+          </div>
+          <label class="gskip"><input type="checkbox" id="vguideSkip"> 次からはこの説明を出さない</label>
+        </div>
         <div class="vwait" id="vwait" hidden role="status"><span class="spin" aria-hidden="true"></span><span><span id="vwaitT">iPhoneが動画を準備しています…</span><small>選んだ動画を、iPhoneがサイトに渡せる形に作り直しています。40秒くらいの動画で20秒ほどかかります。長い動画は、写真アプリの「編集」で短く切ってから選ぶと早くなります。</small></span><button type="button" id="vwaitX">やめる</button></div>
         <p class="vdbg" id="vdbg" hidden></p>
         <div class="vedit" id="vedit" hidden>
@@ -383,7 +416,20 @@ const backNow=()=>{ if(picking&&T.tap!=null&&T.back==null&&performance.now()-T.t
 window.addEventListener("focus",backNow);
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden) backNow(); });
 $("vfile").addEventListener("cancel",()=>{ picking=false; hideWait(); });
-$("vwaitX").addEventListener("click",()=>{ picking=false; hideWait(); });
+$("vwaitX").addEventListener("click",()=>{ picking=false; hideWait(); closeGuide(); });
+// ===== 動画を選ぶ前の説明（iPhoneの写真画面では待ち時間を表示できないので、先に伝えておく） =====
+let guideOff=false; try{ guideOff=localStorage.getItem("wk_guide_off")==="1"; }catch(e){}
+$("vpickLab").addEventListener("click",e=>{
+  if(e.target===$("vfile")) return;   // 「動画をえらぶ」から開いたとき（ボタンの中に選ぶ部品があるため）
+  if(guideOff) return;            // 説明を出さない設定なら、そのまま写真の画面へ
+  e.preventDefault();
+  $("vguide").hidden=false; $("vpickLab").hidden=true; $("vtip").hidden=true;
+});
+function closeGuide(){ $("vguide").hidden=true; if(!vsrc){ $("vpickLab").hidden=false; $("vtip").hidden=false; } }
+$("vguideX").addEventListener("click",closeGuide);
+$("vguideSkip").addEventListener("change",()=>{ guideOff=$("vguideSkip").checked; try{ localStorage.setItem("wk_guide_off",guideOff?"1":"0"); }catch(e){} });
+$("vfile").addEventListener("change",()=>{ $("vguide").hidden=true; });
+$("vfile").addEventListener("cancel",closeGuide);
 const fmt=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,"0")}`;
 const fmt1=t=>`${Math.floor(t/60)}:${(t%60).toFixed(1).padStart(4,"0")}`;
 const MAXLEN=10, MINLEN=1, VIEWMAX=30;   // 下の帯に出すのは最大30秒ぶん（細かく選べるように）
@@ -615,10 +661,19 @@ async function makeClip(v,start,len,onProg,withAudio){
     v.muted=!withAudio;
     v.currentTime=start; await new Promise(r=>{ v.onseeked=r; setTimeout(r,3000); });
     g.drawImage(v,0,0,c.width,c.height);
-    // 一覧用の小さい画像（最初の場面）
-    const t=document.createElement("canvas"); t.width=t.height=240;
-    const side=Math.min(c.width,c.height); t.getContext("2d").drawImage(c,(c.width-side)/2,(c.height-side)/2,side,side,0,0,240,240);
-    const thumb=await new Promise(r=>t.toBlob(r,"image/jpeg",0.8));
+    // 一覧用の小さい画像。iPhoneは再生前だと真っ黒な絵になることがあるので、
+    // 再生が始まってからの場面も何枚か取っておき、真っ黒でない最初の1枚を使う
+    const side=Math.min(c.width,c.height);
+    const shots=[];
+    const snap=()=>{
+      const t=document.createElement("canvas"); t.width=t.height=240;
+      const tg=t.getContext("2d",{willReadFrequently:true});
+      tg.drawImage(c,(c.width-side)/2,(c.height-side)/2,side,side,0,0,240,240);
+      let L=0; try{ const d=tg.getImageData(0,0,240,240).data; let s=0,n=0; for(let i=0;i<d.length;i+=4*53){ s+=d[i]*0.3+d[i+1]*0.59+d[i+2]*0.11; n++; } L=s/n; }catch(e){ L=50; }
+      shots.push({t,L});
+    };
+    snap();
+    const SNAP_AT=[0.6,2.5,5];
     const chunks=[];
     const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:600000,audioBitsPerSecond:64000});
     rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
@@ -626,6 +681,7 @@ async function makeClip(v,start,len,onProg,withAudio){
     let raf=0, done=false, last=-1, stuck=0;
     const finish=()=>{ if(done) return; done=true; cancelAnimationFrame(raf); v.pause(); try{ rec.stop(); }catch(e){} };
     const draw=()=>{ if(done) return; g.drawImage(v,0,0,c.width,c.height); const p=(v.currentTime-start)/len; onProg&&onProg(Math.max(0,Math.min(1,p)));
+      if(SNAP_AT.length&&v.currentTime-start>=SNAP_AT[0]&&!shots.some(s=>s.L>=25)){ SNAP_AT.shift(); snap(); } else if(SNAP_AT.length&&v.currentTime-start>=SNAP_AT[0]) SNAP_AT.shift();
       if(v.currentTime===last){ if(++stuck>240){ finish(); return; } } else { stuck=0; last=v.currentTime; }   // 4秒止まったら打ち切り
       if(v.currentTime>=start+len||v.ended){ finish(); return; } raf=requestAnimationFrame(draw); };
     rec.start(250);
@@ -635,6 +691,8 @@ async function makeClip(v,start,len,onProg,withAudio){
     await stopped;
     if(withAudio&&dest){ try{ audioSrc.disconnect(dest); }catch(_){} }
     const blob=new Blob(chunks,{type:mime.split(";")[0]});
+    const pick=shots.find(s=>s.L>=25)||shots.reduce((a,b)=>b.L>a.L?b:a);
+    const thumb=await new Promise(r=>pick.t.toBlob(r,"image/jpeg",0.8));
     const got=Math.min(len,Math.max(0,v.currentTime-start));
     if(!blob.size || blob.size>2_900_000 || got<Math.min(1,len*0.5)) return null;
     return {blob,thumb,dur:got||len};
