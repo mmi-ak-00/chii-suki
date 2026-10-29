@@ -19,6 +19,8 @@ input{flex:1 1 200px;min-width:0;font:inherit;font-size:16px;padding:10px 14px;b
 button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:8px 14px;cursor:pointer;background:var(--accent);color:var(--ink)}
 button.sub{background:var(--line);color:var(--fg)}
 button.del{background:transparent;color:var(--warn);border:1px solid var(--warn)}
+button.ban{background:transparent;color:#7a5a00;border:1px dashed #b08900}
+button.ban.armed{background:#7a5a00;color:#fff;border-style:solid}
 .msg{color:var(--muted);min-height:1.4em;margin:0}
 .filters{display:flex;gap:8px;flex-wrap:wrap}
 .filters button[aria-pressed="true"]{outline:2px solid var(--fg)}
@@ -93,6 +95,7 @@ button,a,label,select,input,textarea,summary,.cal,.tl-scroll,.cloud{touch-action
     <button role="tab" data-tab="tiktok" aria-selected="false">TikTok<span class="cnt" id="c-tiktok"></span></button>
     <button role="tab" data-tab="photos" aria-selected="false">写真<span class="cnt" id="c-photos"></span><span class="cnt wait" id="c-wait" hidden></span></button>
     <button role="tab" data-tab="wakaru" aria-selected="false">わかる<span class="cnt" id="c-wakaru"></span></button>
+    <button role="tab" data-tab="bans" aria-selected="false">投稿禁止<span class="cnt" id="c-bans"></span></button>
   </div>
   <section id="lettersView" hidden style="display:flex;flex-direction:column;gap:12px">
     <p class="msg" id="lmsg"></p>
@@ -102,6 +105,12 @@ button,a,label,select,input,textarea,summary,.cal,.tl-scroll,.cloud{touch-action
     </div>
     <textarea id="copyout" hidden readonly aria-label="コピー用テキスト"></textarea>
     <ul id="letters"></ul>
+  </section>
+  <section id="bansView" hidden style="display:flex;flex-direction:column;gap:12px">
+    <p class="msg" id="bmsg"></p>
+    <p class="m">各タブの投稿にある「投稿禁止」を押すと、その人はサイトのどこからも投稿・いいね・わかる！ができなくなり、その人の投稿もまとめてかくれます。間違えたときは、ここで「解除」してください（かくれた投稿は、各タブの「もどす」で戻せます）。</p>
+    <div class="filters"><button class="sub" id="breload" type="button">更新</button></div>
+    <ul id="blist"></ul>
   </section>
   <section id="wakaruView" hidden style="display:flex;flex-direction:column;gap:12px">
     <p class="msg" id="wkmsg"></p>
@@ -173,6 +182,18 @@ button,a,label,select,input,textarea,summary,.cal,.tl-scroll,.cloud{touch-action
 <script src="words.js"></script>
 <script>
 const $=id=>document.getElementById(id);
+// 「投稿禁止」ボタン（1回目で確認、2回目で実行）
+function banBtn(kind,id,msgEl,reload){
+  const b=document.createElement("button"); b.type="button"; b.className="ban"; b.textContent="投稿禁止";
+  let t=null;
+  b.onclick=async()=>{
+    if(!b.classList.contains("armed")){ b.classList.add("armed"); b.textContent="本当に禁止する"; t=setTimeout(()=>{ b.classList.remove("armed"); b.textContent="投稿禁止"; },5000); return; }
+    clearTimeout(t); b.disabled=true;
+    try{ await call("ban_item",id,{kind}); await reload(); $(msgEl).textContent="投稿禁止にしました。この人の投稿はまとめてかくしました。"; loadCounts(); }
+    catch(e){ $(msgEl).textContent=e.message; b.disabled=false; }
+  };
+  return b;
+}
 let key="", rows=[], filter="all", pendingDel=null;
 try{ key=sessionStorage.getItem("k")||""; }catch(e){}
 async function call(action,id,extra){
@@ -211,7 +232,7 @@ function draw(){
     };
     const parts=[t,m];
     if(r.hidden){ const g=document.createElement("span"); g.className="tag"; g.textContent="かくし中"; parts.push(g); }
-    li.append(...parts,tog,del); return li;
+    li.append(...parts,tog,banBtn("posts",r.id,"msg",refresh),del); return li;
   }));
 }
 $("login").addEventListener("submit",e=>{ e.preventDefault(); key=$("key").value; refresh(); });
@@ -243,7 +264,7 @@ function drawLetters(){
       pendingL=null;
       try{ await call("delete_letter",l.id); await loadLetters(); }catch(e){ $("lmsg").textContent=e.message; }
     };
-    acts.append(m,del); li.append(who,body,acts); return li;
+    acts.append(m,banBtn("letters",l.id,"lmsg",loadLetters),del); li.append(who,body,acts); return li;
   }));
 }
 $("copyall").addEventListener("click",async()=>{
@@ -257,7 +278,7 @@ $("tabs").addEventListener("click",e=>{
   const b=e.target.closest("[data-tab]"); if(!b) return;
   for(const x of $("tabs").querySelectorAll("[data-tab]")) x.setAttribute("aria-selected",x===b);
   const tab=b.dataset.tab;
-  $("lettersView").hidden=tab!=="letters"; $("projectsView").hidden=tab!=="projects"; $("tiktokView").hidden=tab!=="tiktok"; $("photosView").hidden=tab!=="photos"; $("wakaruView").hidden=tab!=="wakaru";
+  $("lettersView").hidden=tab!=="letters"; $("projectsView").hidden=tab!=="projects"; $("tiktokView").hidden=tab!=="tiktok"; $("photosView").hidden=tab!=="photos"; $("wakaruView").hidden=tab!=="wakaru"; $("bansView").hidden=tab!=="bans";
   $("postsView").hidden=tab!=="posts";
   if(tab==="letters") loadLetters();
   if(tab==="projects") loadProjects();
@@ -265,6 +286,7 @@ $("tabs").addEventListener("click",e=>{
   if(tab==="posts") loadWords();
   if(tab==="photos") loadPhotos();
   if(tab==="wakaru") loadWK();
+  if(tab==="bans") loadBans();
   loadCounts();
 });
 const NUM="①②③④⑤⑥⑦⑧⑨⑩";
@@ -327,6 +349,7 @@ function drawTT(){
     const del=document.createElement("button"); del.className="del"; del.textContent=pendingT===x.id?"本当に消す":"消す";
     del.onclick=async()=>{ if(pendingT!==x.id){ pendingT=x.id; drawTT(); return; } pendingT=null; try{ await call("tiktok_delete",x.id); await loadTT(); }catch(e){ $("tmsg").textContent=e.message; } };
     const parts=[t,m]; if(x.hidden){ const g=document.createElement("span"); g.className="tag"; g.textContent="かくし中"; parts.push(g); }
+    const bb=banBtn("tiktok",x.id,"tmsg",loadTT);
     const dg=document.createElement("button"); dg.className="sub"; dg.textContent="サムネ診断";
     const out=document.createElement("pre"); out.className="m"; out.style.cssText="flex-basis:100%;white-space:pre-wrap;margin:0;font-size:12px"; out.hidden=true;
     dg.onclick=async()=>{
@@ -335,7 +358,7 @@ function drawTT(){
       catch(e){ out.textContent=e.message; }
       dg.disabled=false;
     };
-    li.append(...parts,tog,del,dg,out); return li;
+    li.append(...parts,tog,bb,del,dg,out); return li;
   }));
 }
 $("treload").addEventListener("click",loadTT);
@@ -416,6 +439,7 @@ function drawPhotos(){
     const set=st=>async()=>{ try{ await call("photo_status",x.id,{status:st}); await loadPhotos(); }catch(e){ $("phmsg").textContent=e.message; } };
     if(x.status!=="shown") pb.append(mk("載せる","",set("shown")));
     if(x.status!=="hidden") pb.append(mk("かくす","sub",set("hidden")));
+    pb.append(banBtn("photos",x.id,"phmsg",loadPhotos));
     pb.append(mk(pendingP===x.id?"本当に消す":"消す","del",async()=>{
       if(pendingP!==x.id){ pendingP=x.id; drawPhotos(); return; }
       pendingP=null; try{ await call("photo_delete",x.id); await loadPhotos(); }catch(e){ $("phmsg").textContent=e.message; }
@@ -436,10 +460,29 @@ async function loadCounts(){
     const c=await call("counts");
     $("c-projects").textContent=`${c.projects}/${c.projectsTotal}`;
     $("c-posts").textContent=c.posts; $("c-letters").textContent=c.letters;
-    $("c-tiktok").textContent=c.tiktok; $("c-photos").textContent=c.photos; $("c-wakaru").textContent=c.wakaru??"";
+    $("c-tiktok").textContent=c.tiktok; $("c-photos").textContent=c.photos; $("c-wakaru").textContent=c.wakaru??""; $("c-bans").textContent=c.bans||"";
     $("c-wait").hidden=!c.photosPending; $("c-wait").textContent=c.photosPending?`待ち${c.photosPending}`:"";
   }catch(e){}
 }
+let bans=[];
+async function loadBans(){
+  try{ const d=await call("ban_list"); bans=d.bans; drawBans(); }catch(e){ $("bmsg").textContent=e.message; }
+}
+function drawBans(){
+  $("bmsg").textContent=bans.length?`${bans.length}人を投稿禁止にしています（新しい順）。`:"投稿禁止にしている人はいません。";
+  $("blist").replaceChildren(...bans.map(x=>{
+    const li=document.createElement("li");
+    const t=document.createElement("span"); t.className="t"; t.textContent="禁止したときの投稿：「"+(x.note||"（文なし）")+"」";
+    const m=document.createElement("span"); m.className="m"; m.textContent=new Date(x.at).toLocaleString("ja-JP")+"に禁止";
+    const b=document.createElement("button"); b.type="button"; b.className="sub"; b.textContent="解除";
+    b.onclick=async()=>{
+      if(b.dataset.armed!=="1"){ b.dataset.armed="1"; b.textContent="本当に解除する"; return; }
+      try{ await call("unban",null,{grp:x.grp}); $("bmsg").textContent="解除しました。"; await loadBans(); loadCounts(); }catch(e){ $("bmsg").textContent=e.message; }
+    };
+    li.append(t,m,b); return li;
+  }));
+}
+$("breload").addEventListener("click",loadBans);
 let wkItems=[], pendingW=null, wkVid=[0,1];
 async function loadWK(){
   try{ const d=await call("wk_list"); wkItems=d.items; wkVid=[d.videoBytes,d.videoLimit]; drawWK(); }catch(e){ $("wkmsg").textContent=e.message; }
@@ -458,7 +501,7 @@ function drawWK(){
     tog.onclick=async()=>{ try{ await call(x.hidden?"wk_show":"wk_hide",x.id); await loadWK(); }catch(e){ $("wkmsg").textContent=e.message; } };
     const del=document.createElement("button"); del.className="del"; del.textContent=pendingW===x.id?"本当に消す":"消す";
     del.onclick=async()=>{ if(pendingW!==x.id){ pendingW=x.id; drawWK(); return; } pendingW=null; try{ await call("wk_delete",x.id); await loadWK(); }catch(e){ $("wkmsg").textContent=e.message; } };
-    li.append(...parts,tog,del); return li;
+    li.append(...parts,tog,...(x.seed?[]:[banBtn("wakaru",x.id,"wkmsg",loadWK)]),del); return li;
   }));
 }
 $("wkf").addEventListener("submit",async e=>{

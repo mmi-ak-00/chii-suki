@@ -53,8 +53,12 @@ h1 span{color:var(--accent)}
 /* 出す欄 */
 .add{background:var(--surface);border:2px solid var(--line);border-radius:24px;padding:16px;display:flex;flex-direction:column;gap:10px}
 .add h2{margin:0;font-family:var(--display);font-weight:800;font-size:17px}
-.add form{display:flex;gap:8px;flex-wrap:wrap}
-.add input{flex:1 1 220px;min-width:0;font:inherit;font-size:16px;color:var(--fg);background:var(--bg);border:2px solid var(--line);border-radius:999px;padding:11px 16px;outline:none}
+.add form{display:flex;flex-direction:column;gap:10px}
+.add .cnt{align-self:flex-end;margin-top:-6px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.add .send{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px dashed var(--line);padding-top:12px}
+.add .send .hint{flex:1 1 180px}
+.add .vgo.done:disabled{opacity:1}
+.add input{width:100%;min-width:0;font:inherit;font-size:16px;color:var(--fg);background:var(--bg);border:2px solid var(--line);border-radius:999px;padding:11px 16px;outline:none}
 .add input:focus{border-color:var(--accent)}
 .add button{font-family:var(--display);font-weight:800;font-size:16px;border:0;border-radius:999px;padding:11px 22px;background:var(--accent);color:var(--accent-ink);cursor:pointer}
 .add button:disabled{opacity:.5}
@@ -75,6 +79,13 @@ h1 span{color:var(--accent)}
 .vlab b{font-variant-numeric:tabular-nums;color:var(--accent)}
 .vctl input[type=range]{width:100%;accent-color:var(--accent)}
 .add .vdel{align-self:flex-start;font-family:var(--body);font-size:13px;font-weight:700;background:none;border:0;border-radius:0;padding:0;color:var(--muted);text-decoration:underline;cursor:pointer}
+.vtip{margin:-2px 0 0;font-size:12px;color:var(--muted)}
+.vstep{margin:0;font-family:var(--display);font-weight:800;font-size:13px;display:flex;align-items:center;gap:6px}
+.vstep b{width:20px;height:20px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:12px;display:inline-flex;align-items:center;justify-content:center}
+.add .vgo{align-self:flex-start;font-size:14px;padding:8px 16px;background:var(--fg);color:var(--bg)}
+.add .vgo.done{background:var(--w3);color:#fff}
+.vres{margin:0;font-size:13px;font-weight:700;color:var(--w3)}
+.vres.ng{color:var(--accent)}
 .prog{height:6px;border-radius:999px;background:var(--line);overflow:hidden}
 .prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
 /* カードの動画 */
@@ -132,25 +143,34 @@ button,a,input{touch-action:manipulation}
     <h2 id="addTitle">好きポイントをカードにする</h2>
     <form id="af" autocomplete="off">
       <input id="at" maxlength="40" placeholder="例：ターンしたときの髪の揺れ" aria-label="好きポイント（40文字まで）" required>
-      <button id="ago" type="submit">カードを出す</button>
-    </form>
-    <div class="row"><p class="hint" id="ah"></p><span id="ac">0 / 40</span></div>
-    <div class="vbox">
-      <label class="vpick" id="vpickLab" for="vfile"><span aria-hidden="true">🎬</span> 10秒動画を付ける<small>なくてもOK</small>
-        <input id="vfile" type="file" accept="video/*">
-      </label>
-      <div class="vedit" id="vedit" hidden>
-        <video id="vprev" playsinline muted preload="auto"></video>
-        <div class="vctl">
-          <p class="vmsg" id="vmsg"></p>
-          <div id="vrangeBox" hidden>
-            <label for="vstart" class="vlab">どこから10秒？ <b id="vfrom">0:00</b>〜<b id="vto">0:10</b></label>
-            <input id="vstart" type="range" min="0" max="0" step="0.1" value="0">
+      <span class="cnt" id="ac">0 / 40</span>
+      <div class="vbox">
+        <label class="vpick" id="vpickLab" for="vfile"><span aria-hidden="true">🎬</span> 10秒動画を付ける<small>なくてもOK</small>
+          <input id="vfile" type="file" accept="video/*">
+        </label>
+        <p class="vtip" id="vtip">長い動画は、先に写真アプリの「編集」で10秒くらいに切り取ってから選ぶと、すぐ読み込めます。</p>
+        <div class="vedit" id="vedit" hidden>
+          <video id="vprev" playsinline muted preload="auto"></video>
+          <div class="vctl">
+            <p class="vstep"><b>1</b> 使う10秒をえらぶ</p>
+            <p class="vmsg" id="vmsg"></p>
+            <div id="vrangeBox" hidden>
+              <label for="vstart" class="vlab">どこから10秒？ <b id="vfrom">0:00</b>〜<b id="vto">0:10</b></label>
+              <input id="vstart" type="range" min="0" max="0" step="0.1" value="0">
+            </div>
+            <p class="vstep"><b>2</b> 軽くする（圧縮）</p>
+            <button type="button" class="vgo" id="vcomp">この10秒を圧縮する</button>
+            <div class="prog" id="vprog" hidden><i id="vbar"></i></div>
+            <p class="vres" id="vres" hidden></p>
+            <button type="button" class="vdel" id="vclear">動画を外す</button>
           </div>
-          <button type="button" class="vdel" id="vclear">動画を外す</button>
         </div>
       </div>
-    </div>
+      <div class="send">
+        <p class="hint" id="ah"></p>
+        <button id="ago" type="submit">カードを出す</button>
+      </div>
+    </form>
   </section>
 
   <section aria-labelledby="wallTitle" style="display:flex;flex-direction:column;gap:12px">
@@ -269,9 +289,8 @@ $("af").addEventListener("submit",async e=>{
   try{
     let clip=null;
     if(vsrc){
-      $("ah").textContent="動画を10秒に切り取って、小さくしています…（動画と同じくらい時間がかかります）";
-      clip=await makeClip(vsrc.file, Number($("vstart").value)||0, Math.min(10, vsrc.dur||10), p=>{ $("ah").textContent=`動画を小さくしています… ${Math.round(p*100)}%`; });
-      if(!clip){ $("ah").textContent="この端末では動画を変換できませんでした。文字だけで出すか、別のブラウザで試してみてね。"; return; }
+      if(!vsrc.clip){ $("ah").textContent="動画の「この10秒を圧縮する」を押してから出してね。（動画なしで出すときは「動画を外す」）"; return; }
+      clip=vsrc.clip;
     }
     if(demo){ cards.unshift({id:"l"+Date.now(),text,n:1,at:Date.now(),mine:true,video:!!clip,dur:clip?clip.dur:0,videoUrl:clip?URL.createObjectURL(clip.blob):"",thumbUrl:clip?URL.createObjectURL(clip.thumb):""}); render(); $("at").value=""; $("ac").textContent="0 / 40"; clearVideo(); $("ah").className="hint ok"; $("ah").textContent="カードを出しました！（プレビューなので保存はされません）"+(clip?`（動画 ${(clip.blob.size/1e6).toFixed(1)}MB）`:""); return; }
     let r;
@@ -301,7 +320,8 @@ document.querySelector(".sort").addEventListener("click",e=>{
 let vsrc=null;
 const fmt=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,"0")}`;
 function clearVideo(){
-  if(vsrc) URL.revokeObjectURL(vsrc.url);
+  if(vsrc){ URL.revokeObjectURL(vsrc.url); if(vsrc.clipUrl) URL.revokeObjectURL(vsrc.clipUrl); }
+  $("vcomp").textContent="この10秒を圧縮する"; $("vcomp").classList.remove("done"); $("vcomp").disabled=false; $("vres").hidden=true; $("vprog").hidden=true; $("vtip").hidden=false;
   vsrc=null; $("vfile").value=""; $("vedit").hidden=true; $("vprev").removeAttribute("src"); $("vpickLab").hidden=false;
 }
 $("vclear").onclick=clearVideo;
@@ -315,44 +335,89 @@ $("vfile").addEventListener("change",async()=>{
     await new Promise((ok,ng)=>{ v.onloadedmetadata=ok; v.onerror=ng; setTimeout(ng,15000); });
     let dur=v.duration;
     if(!isFinite(dur)){ v.currentTime=1e9; await new Promise(r=>{ v.ontimeupdate=r; setTimeout(r,2000); }); dur=v.duration; v.currentTime=0; }
-    vsrc={file:f,url,dur};
+    vsrc={file:f,url,dur,clip:null};
+    $("vtip").hidden=true; resetClip();
     const long=dur>10.05;
     $("vrangeBox").hidden=!long;
     $("vstart").max=String(long?Math.max(0,dur-10):0); $("vstart").value="0"; updRange();
     $("vmsg").textContent=long?`${fmt(dur)}の動画です。好きな10秒をえらんでね。`:`${dur.toFixed(1)}秒の動画を付けます。`;
   }catch(e){ clearVideo(); $("ah").className="hint"; $("ah").textContent="この動画は読み込めませんでした。別の動画で試してみてね。"; }
 });
+function resetClip(){
+  if(vsrc&&vsrc.clipUrl){ URL.revokeObjectURL(vsrc.clipUrl); vsrc.clipUrl=""; }
+  if(vsrc) vsrc.clip=null;
+  $("vcomp").textContent="この10秒を圧縮する"; $("vcomp").classList.remove("done"); $("vcomp").disabled=false;
+  $("vres").hidden=true; $("vprog").hidden=true;
+  const v=$("vprev"); if(vsrc&&v.src!==vsrc.url){ v.src=vsrc.url; } v.muted=true; v.controls=false; v.loop=false;
+}
 function updRange(){
   const s=Number($("vstart").value)||0; $("vfrom").textContent=fmt(s); $("vto").textContent=fmt(Math.min(s+10,vsrc?vsrc.dur:10));
   try{ $("vprev").currentTime=s+0.05; }catch(e){}
 }
-$("vstart").addEventListener("input",updRange);
+$("vstart").addEventListener("input",()=>{ if(vsrc&&vsrc.clip) resetClip(); updRange(); });
+
+// 「この10秒を圧縮する」：iPhoneは「押した瞬間」でないと音付きで再生できないので、押した瞬間に準備してから圧縮する
+let audioCtx=null, audioSrcFor=null, audioSrc=null;
+$("vcomp").addEventListener("click",async()=>{
+  if(!vsrc||vsrc.busy) return;
+  const v=$("vprev");
+  if(vsrc.clip){ return; }
+  vsrc.busy=true;
+  // ↓ ここまでを、押した瞬間（awaitの前）に済ませる
+  try{ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); audioCtx.resume(); }catch(e){ audioCtx=null; }
+  v.muted=false;
+  const unlock=v.play(); if(unlock&&unlock.catch) unlock.catch(()=>{});
+  v.pause();
+  $("vcomp").disabled=true; $("vcomp").textContent="圧縮しています…";
+  $("vprog").hidden=false; $("vbar").style.width="0%"; $("vres").hidden=true; $("vres").className="vres";
+  const len=Math.min(10,vsrc.dur||10), start=Number($("vstart").value)||0;
+  const before=vsrc.file.size;
+  let clip=await makeClip(v,start,len,p=>{ $("vbar").style.width=Math.round(p*100)+"%"; },true);
+  let noAudio=false;
+  if(!clip){ clip=await makeClip(v,start,len,p=>{ $("vbar").style.width=Math.round(p*100)+"%"; },false); noAudio=!!clip; }
+  vsrc.busy=false; v.muted=true;
+  $("vprog").hidden=true; $("vres").hidden=false;
+  if(!clip){
+    $("vcomp").disabled=false; $("vcomp").textContent="もう一度圧縮する";
+    $("vres").className="vres ng";
+    $("vres").textContent="この端末では圧縮できませんでした。写真アプリで10秒くらいに切り取ってから選び直すか、別のブラウザで試してみてね。";
+    return;
+  }
+  vsrc.clip=clip;
+  $("ah").className="hint"; $("ah").textContent="";
+  // 圧縮後の動画をその場で確かめられるようにする
+  vsrc.clipUrl=URL.createObjectURL(clip.blob);
+  v.src=vsrc.clipUrl; v.controls=true; v.loop=true; v.muted=false;
+  try{ if(audioSrc&&audioSrcFor===v) audioSrc.connect(audioCtx.destination); }catch(e){}   // 確認のときは音が聞こえるように
+  $("vcomp").classList.add("done"); $("vcomp").textContent="✓ 圧縮できました";
+  $("vres").textContent=`${(before/1e6).toFixed(1)}MB → ${(clip.blob.size/1e6).toFixed(1)}MB（${clip.dur.toFixed(1)}秒）`+(noAudio?"　※この端末では音なしになりました":"")+"　このまま「カードを出す」でOK！";
+});
 
 // 動画を、長い辺720pxくらい・約1MBの10秒クリップに作り直す
-async function makeClip(file,start,len,onProg){
+async function makeClip(v,start,len,onProg,withAudio){
   if(!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) return null;
   // どのスマホでも再生しやすいH.264（mp4）を優先。作れない端末はwebmで作る
   const types=["video/mp4;codecs=avc1.42E01E,mp4a.40.2","video/mp4;codecs=avc1,mp4a","video/mp4;codecs=avc1","video/webm;codecs=vp8,opus","video/webm;codecs=vp9,opus","video/webm","video/mp4"];
   const mime=types.find(t=>{ try{ return MediaRecorder.isTypeSupported(t); }catch(e){ return false; } });
   if(!mime) return null;
-  const url=URL.createObjectURL(file);
-  const v=document.createElement("video");
-  v.src=url; v.playsInline=true; v.preload="auto"; v.muted=false;
-  v.style.cssText="position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none";
-  document.body.append(v);
-  let ac=null;
   try{
-    await new Promise((ok,ng)=>{ v.onloadedmetadata=ok; v.onerror=ng; setTimeout(ng,15000); });
+    if(!v.videoWidth){ await new Promise((ok,ng)=>{ v.onloadedmetadata=ok; v.onerror=ng; setTimeout(ng,15000); }); }
     const W0=v.videoWidth||720, H0=v.videoHeight||1280, sc=Math.min(1,720/Math.max(W0,H0));
     const c=document.createElement("canvas"); c.width=Math.round(W0*sc/2)*2; c.height=Math.round(H0*sc/2)*2;
     const g=c.getContext("2d");
     const stream=c.captureStream(30);
-    try{
-      ac=new (window.AudioContext||window.webkitAudioContext)();
-      const src=ac.createMediaElementSource(v), dest=ac.createMediaStreamDestination();
-      src.connect(dest);   // 音は録るだけで、スピーカーには出さない
-      dest.stream.getAudioTracks().forEach(t=>stream.addTrack(t));
-    }catch(e){}
+    if(withAudio){
+      if(!audioCtx) return null;
+      try{
+        if(audioSrcFor!==v){ audioSrc=audioCtx.createMediaElementSource(v); audioSrcFor=v; }
+        var dest=audioCtx.createMediaStreamDestination();
+        try{ audioSrc.disconnect(audioCtx.destination); }catch(_){}
+        audioSrc.connect(dest);   // 圧縮中の音は録るだけで、スピーカーには出さない
+        dest.stream.getAudioTracks().forEach(t=>stream.addTrack(t));
+        if(audioCtx.state==="suspended") await audioCtx.resume();
+      }catch(e){ return null; }
+    }
+    v.muted=!withAudio;
     v.currentTime=start; await new Promise(r=>{ v.onseeked=r; setTimeout(r,3000); });
     g.drawImage(v,0,0,c.width,c.height);
     // 一覧用の小さい画像（最初の場面）
@@ -363,21 +428,22 @@ async function makeClip(file,start,len,onProg){
     const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:850000,audioBitsPerSecond:64000});
     rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
     const stopped=new Promise(r=>rec.onstop=r);
-    let raf=0, done=false;
-    const draw=()=>{ if(done) return; g.drawImage(v,0,0,c.width,c.height); const p=(v.currentTime-start)/len; onProg&&onProg(Math.max(0,Math.min(1,p)));
-      if(v.currentTime>=start+len||v.ended){ finish(); return; } raf=requestAnimationFrame(draw); };
+    let raf=0, done=false, last=-1, stuck=0;
     const finish=()=>{ if(done) return; done=true; cancelAnimationFrame(raf); v.pause(); try{ rec.stop(); }catch(e){} };
+    const draw=()=>{ if(done) return; g.drawImage(v,0,0,c.width,c.height); const p=(v.currentTime-start)/len; onProg&&onProg(Math.max(0,Math.min(1,p)));
+      if(v.currentTime===last){ if(++stuck>240){ finish(); return; } } else { stuck=0; last=v.currentTime; }   // 4秒止まったら打ち切り
+      if(v.currentTime>=start+len||v.ended){ finish(); return; } raf=requestAnimationFrame(draw); };
     rec.start(250);
-    if(ac&&ac.state==="suspended") await ac.resume();
     await v.play();
     raf=requestAnimationFrame(draw);
-    setTimeout(finish,(len+4)*1000);   // 念のため
+    setTimeout(finish,(len+5)*1000);   // 念のため
     await stopped;
+    if(withAudio&&dest){ try{ audioSrc.disconnect(dest); }catch(_){} }
     const blob=new Blob(chunks,{type:mime.split(";")[0]});
-    if(!blob.size || blob.size>2_900_000) return null;
-    return {blob,thumb,dur:Math.min(len,(v.duration||len)-start)};
-  }catch(e){ return null; }
-  finally{ try{ ac&&ac.close(); }catch(e){} v.remove(); URL.revokeObjectURL(url); }
+    const got=Math.min(len,Math.max(0,v.currentTime-start));
+    if(!blob.size || blob.size>2_900_000 || got<Math.min(1,len*0.5)) return null;
+    return {blob,thumb,dur:got||len};
+  }catch(e){ try{ v.pause(); }catch(_){} return null; }
 }
 
 render(); load().then(loop);

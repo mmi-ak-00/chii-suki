@@ -205,7 +205,8 @@ async function ttWho(request, env) {
   return { key: "u:" + (await sha(uid + (env.ADMIN_KEY || "salt"))).slice(0, 40), uid, isNew: !m };
 }
 function withUidCookie(res, who) {
-  if (!who || !who.isNew) return res;
+  if (!who || !who.isNew || who.sent) return res;
+  who.sent = true;
   const r = new Response(res.body, res);
   r.headers.append("Set-Cookie", `chii_uid=${who.uid}; Path=/; Max-Age=${60 * 60 * 24 * 365}; HttpOnly; Secure; SameSite=Lax`);
   return r;
@@ -681,6 +682,77 @@ async function wkVote({ request, env, who }) {
   return json({ ok: true, on });
 }
 
+// ===== 投稿禁止 =====
+// 「同じ人」の印は2つ：回線（IPアドレス）から作る印と、ブラウザに残す印（クッキー）。
+// 投稿のたびに2つの組み合わせを覚えておき、禁止するときは、つながっている印をまとめて禁止する。
+let banReady = false;
+async function ensureBan(env) {
+  if (banReady) return;
+  await env.DB.batch([
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS bans (k TEXT PRIMARY KEY, at INTEGER NOT NULL, note TEXT, grp TEXT)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS seen (ip TEXT NOT NULL, ck TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (ip, ck))"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_seen_ck ON seen (ck)"),
+  ]);
+  banReady = true;
+}
+async function ipKeyOf(request, env) {
+  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+  return await sha(ip + (env.ADMIN_KEY || "salt"));
+}
+// 投稿の前に呼ぶ：禁止されていれば true（もう片方の印も禁止に足す）
+async function checkBan(request, env, who) {
+  await ensureBan(env);
+  const ipk = await ipKeyOf(request, env);
+  const now = Date.now();
+  await env.DB.prepare("INSERT INTO seen (ip, ck, at) VALUES (?, ?, ?) ON CONFLICT(ip, ck) DO UPDATE SET at=excluded.at").bind(ipk, who.key, now).run();
+  const hit = await env.DB.prepare("SELECT grp FROM bans WHERE k IN (?, ?) LIMIT 1").bind(ipk, who.key).first();
+  if (!hit) return false;
+  await env.DB.batch([
+    env.DB.prepare("INSERT OR IGNORE INTO bans (k, at, note, grp) VALUES (?, ?, '（同じ人の別の印）', ?)").bind(ipk, now, hit.grp),
+    env.DB.prepare("INSERT OR IGNORE INTO bans (k, at, note, grp) VALUES (?, ?, '（同じ人の別の印）', ?)").bind(who.key, now, hit.grp),
+  ]);
+  return true;
+}
+// 管理ページから：この投稿をした人を禁止して、その人の公開中の投稿をかくす
+const BAN_SRC = {
+  posts:   { sql: "SELECT iph AS k, text AS note FROM posts WHERE id=?", ensure: null },
+  letters: { sql: "SELECT iph AS k, substr(message,1,40) AS note FROM letters WHERE id=?", ensure: (env) => ensureLetters(env) },
+  tiktok:  { sql: "SELECT iph AS k, COALESCE(NULLIF(comment,''),'（TikTok）') AS note FROM tiktok WHERE id=?", ensure: (env) => ensureTT(env) },
+  photos:  { sql: "SELECT iph AS k, COALESCE(NULLIF(comment,''),'（写真）') AS note FROM photos WHERE id=?", ensure: (env) => ensurePH(env) },
+  wakaru:  { sql: "SELECT iph AS k, text AS note FROM wk_cards WHERE id=?", ensure: (env) => ensureWK(env) },
+};
+async function banItem(env, kind, id) {
+  const src = BAN_SRC[kind];
+  if (!src) return { error: "この投稿は見つかりません。" };
+  await ensureBan(env); await ensureLetters(env); await ensureTT(env); await ensurePH(env); await ensureWK(env);
+  const row = await env.DB.prepare(src.sql).bind(id).first();
+  if (!row || !row.k || row.k === "admin") return { error: "この投稿の送り主は分かりませんでした。" };
+  // つながっている印を集める（2段まで）
+  const keys = new Set([row.k]);
+  for (let round = 0; round < 2; round++) {
+    const list = [...keys];
+    const ph = list.map(() => "?").join(",");
+    const { results } = await env.DB.prepare(`SELECT ip, ck FROM seen WHERE ip IN (${ph}) OR ck IN (${ph})`).bind(...list, ...list).all();
+    for (const r of results) { keys.add(r.ip); keys.add(r.ck); }
+  }
+  const now = Date.now(), grp = row.k.slice(0, 12) + now.toString(36);
+  const note = String(row.note || "").slice(0, 40);
+  const ks = [...keys];
+  const ph = ks.map(() => "?").join(",");
+  const ops = ks.map((k) => env.DB.prepare("INSERT OR IGNORE INTO bans (k, at, note, grp) VALUES (?, ?, ?, ?)").bind(k, now, note, grp));
+  ops.push(
+    env.DB.prepare(`UPDATE posts SET hidden=1 WHERE iph IN (${ph})`).bind(...ks),
+    env.DB.prepare(`UPDATE tiktok SET hidden=1 WHERE iph IN (${ph})`).bind(...ks),
+    env.DB.prepare(`DELETE FROM tiktok_likes WHERE iph IN (${ph})`).bind(...ks),
+    env.DB.prepare(`UPDATE photos SET status='hidden' WHERE status<>'hidden' AND iph IN (${ph})`).bind(...ks),
+    env.DB.prepare(`UPDATE wk_cards SET hidden=1 WHERE iph IN (${ph})`).bind(...ks),
+    env.DB.prepare(`DELETE FROM wk_votes WHERE who IN (${ph})`).bind(...ks),
+    env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k IN ('ver','tt_ver','ph_ver','wk_ver')"),
+  );
+  await env.DB.batch(ops);
+  return { ok: true, keys: ks.length };
+}
+
 // ===== 生誕企画のリスト =====
 // 並び順がそのまま「企画①②③…」の番号になります。
 // open: true は最初から公開。false は管理ページで「公開する」を押すまで COMING SOON 表示。
@@ -750,6 +822,20 @@ async function adminPost({ request, env }) {
   const id = Number(body.id);
   const bump = env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='ver'");
   switch (body.action) {
+    case "ban_item": {
+      const r = await banItem(env, String(body.kind || ""), id);
+      return r.error ? json(r, 400) : json(r);
+    }
+    case "ban_list": {
+      await ensureBan(env);
+      const { results } = await env.DB.prepare("SELECT grp, MIN(at) AS at, MAX(CASE WHEN note NOT LIKE '（同じ人の別の印）' THEN note END) AS note, COUNT(*) AS n FROM bans GROUP BY grp ORDER BY at DESC").all();
+      return json({ bans: results });
+    }
+    case "unban": {
+      await ensureBan(env);
+      await env.DB.prepare("DELETE FROM bans WHERE grp=?").bind(String(body.grp || "")).run();
+      return json({ ok: true });
+    }
     case "list": {
       const { results } = await env.DB
         .prepare("SELECT id, text, at, hidden FROM posts ORDER BY id DESC LIMIT 1000").all();
@@ -797,6 +883,7 @@ async function adminPost({ request, env }) {
         photos: await one("SELECT COUNT(*) AS n FROM photos"),
         wakaru: await (async () => { await ensureWK(env); return one("SELECT COUNT(*) AS n FROM wk_cards"); })(),
         photosPending: await one("SELECT COUNT(*) AS n FROM photos WHERE status='pending'"),
+        bans: await (async () => { await ensureBan(env); return one("SELECT COUNT(DISTINCT grp) AS n FROM bans"); })(),
       });
     }
     case "photo_list": {
@@ -916,8 +1003,17 @@ async function adminPost({ request, env }) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    const c = { request, env, ctx };
     let previewing = false, linkBot = false;
+    // みんなが使う /api/（管理ページ以外）は、「同じ人」の印を用意して、投稿のときは禁止されていないか確かめる
+    const isApi = url.pathname.startsWith("/api/") && url.pathname !== "/api/admin";
+    const who = isApi ? await ttWho(request, env) : null;
+    const c = { request, env, ctx, who };
+    if (isApi && request.method === "POST") {
+      try {
+        if (await checkBan(request, env, who)) return withUidCookie(json({ error: "現在このサイトには投稿できません。" }, 403), who);
+      } catch (e) { /* 確かめられないときは通す */ }
+    }
+    const out = await (async () => {
     try {
       if (url.pathname === "/api/posts") {
         if (request.method === "GET") return await postsGet(c);
@@ -933,8 +1029,7 @@ export default {
       if (url.pathname === "/api/photos/img") return await phImage(c);
       if (url.pathname === "/api/wakaru/video") return await wkVideo(c);
       if (url.pathname === "/api/wakaru" || url.pathname === "/api/wakaru/vote") {
-        const who = await ttWho(request, env);
-        const cw = { ...c, who };
+        const cw = c;
         let res;
         if (url.pathname === "/api/wakaru") {
           if (request.method === "GET") res = await wkGet(cw);
@@ -943,8 +1038,7 @@ export default {
         return withUidCookie(res || json({ error: "method not allowed" }, 405), who);
       }
       if (url.pathname === "/api/tiktok" || url.pathname === "/api/tiktok/like" || url.pathname === "/api/tiktok/comment") {
-        const who = await ttWho(request, env);
-        const cw = { ...c, who };
+        const cw = c;
         let res;
         if (url.pathname === "/api/tiktok") {
           if (request.method === "GET") res = await ttGet(cw);
@@ -980,6 +1074,9 @@ export default {
     } catch (e) {
       return json({ error: "サーバーでエラーが起きました。設定（DB のつなぎ方）を確認してください。" }, 500);
     }
+    return null;
+    })();
+    if (out) return isApi ? withUidCookie(out, who) : out;
     const res = await env.ASSETS.fetch(request);
     // Xなどで画像が出るよう、共有用画像のアドレスを「https://〜/ogp.png」の形に直す
     const type = res.headers.get("content-type") || "";
