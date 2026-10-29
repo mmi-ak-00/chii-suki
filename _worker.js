@@ -197,7 +197,21 @@ async function ttResolve(raw) {
   return { error: "いまTikTokで動画を確認できませんでした。少し待ってからもう一度どうぞ。" };
 }
 
-async function ttPost({ request, env }) {
+// 推しTikTokで「同じ人」を見分ける印。回線（IPアドレス）はスマホだと変わりやすいので、
+// ブラウザに1年間残る印（クッキー）で見分ける
+async function ttWho(request, env) {
+  const m = (request.headers.get("Cookie") || "").match(/(?:^|;\s*)chii_uid=([0-9a-f]{32})/);
+  const uid = m ? m[1] : [...crypto.getRandomValues(new Uint8Array(16))].map((x) => x.toString(16).padStart(2, "0")).join("");
+  return { key: "u:" + (await sha(uid + (env.ADMIN_KEY || "salt"))).slice(0, 40), uid, isNew: !m };
+}
+function withUidCookie(res, who) {
+  if (!who || !who.isNew) return res;
+  const r = new Response(res.body, res);
+  r.headers.append("Set-Cookie", `chii_uid=${who.uid}; Path=/; Max-Age=${60 * 60 * 24 * 365}; HttpOnly; Secure; SameSite=Lax`);
+  return r;
+}
+
+async function ttPost({ request, env, who }) {
   let body;
   try { body = await request.json(); } catch { return json({ error: "送れませんでした。" }, 400); }
   const cat = String(body?.cat ?? "");
@@ -209,8 +223,7 @@ async function ttPost({ request, env }) {
     const lower = comment.toLowerCase();
     if ([...DEFAULT_NG, ...extra].some((w) => lower.includes(w.toLowerCase()))) return json({ error: "その言葉は投稿できません。" }, 400);
   }
-  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
-  const iph = await sha(ip + (env.ADMIN_KEY || "salt"));
+  const iph = who.key;
   const now = Date.now();
   await ensureTT(env);
   const recent = await env.DB.prepare("SELECT COUNT(*) AS n FROM tiktok WHERE iph=? AND at > ?").bind(iph, now - TT_WAIT_SEC * 1000).first();
@@ -225,14 +238,13 @@ async function ttPost({ request, env }) {
   return json({ ok: true, vid: v.vid });
 }
 
-async function ttGet({ request, env }) {
+async function ttGet({ request, env, who }) {
   const url = new URL(request.url);
   await ensureTT(env);
   const row = await env.DB.prepare("SELECT v FROM meta WHERE k='tt_ver'").first();
   const ver = row ? row.v : 0;
   if (Number(url.searchParams.get("v") ?? -1) === ver) return json({ ver, same: true });
-  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
-  const me = await sha(ip + (env.ADMIN_KEY || "salt"));
+  const me = who.key;
   const out = {};
   for (const cat of Object.keys(TT_CATS)) {
     const { results: vids } = await env.DB.prepare(
@@ -266,7 +278,7 @@ async function ttGet({ request, env }) {
 }
 
 // いいね（押すと推しに1票。もう一度押すと取り消し）
-async function ttLike({ request, env }) {
+async function ttLike({ request, env, who }) {
   let body;
   try { body = await request.json(); } catch { return json({ error: "送れませんでした。" }, 400); }
   const cat = String(body?.cat ?? ""), vid = String(body?.vid ?? "").replace(/\D/g, "");
@@ -274,8 +286,7 @@ async function ttLike({ request, env }) {
   await ensureTT(env);
   const exists = await env.DB.prepare("SELECT 1 AS x FROM tiktok WHERE cat=? AND vid=? AND hidden=0 LIMIT 1").bind(cat, vid).first();
   if (!exists) return json({ error: "この動画はランキングにありません。" }, 404);
-  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
-  const iph = await sha(ip + (env.ADMIN_KEY || "salt"));
+  const iph = who.key;
   const on = !!body?.on;
   await env.DB.batch([
     on
@@ -287,7 +298,7 @@ async function ttLike({ request, env }) {
 }
 
 // ランキングの動画にひとことを書き足す（書き足した人も「推した人」に数える）
-async function ttComment({ request, env }) {
+async function ttComment({ request, env, who }) {
   let body;
   try { body = await request.json(); } catch { return json({ error: "送れませんでした。" }, 400); }
   const cat = String(body?.cat ?? ""), vid = String(body?.vid ?? "").replace(/\D/g, "");
@@ -301,8 +312,7 @@ async function ttComment({ request, env }) {
   await ensureTT(env);
   const row = await env.DB.prepare("SELECT COUNT(*) AS n, MAX(title) AS title FROM tiktok WHERE cat=? AND vid=? AND hidden=0").bind(cat, vid).first();
   if (!row || !row.n) return json({ error: "この動画はランキングにありません。" }, 404);
-  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
-  const iph = await sha(ip + (env.ADMIN_KEY || "salt"));
+  const iph = who.key;
   const now = Date.now();
   const recent = await env.DB.prepare("SELECT COUNT(*) AS n FROM tiktok WHERE iph=? AND at > ?").bind(iph, now - TT_WAIT_SEC * 1000).first();
   if (recent && recent.n > 0) return json({ error: "ちょっと待ってからもう一度どうぞ。" }, 429);
@@ -705,20 +715,19 @@ export default {
         return json({ error: "method not allowed" }, 405);
       }
       if (url.pathname === "/api/photos/img") return await phImage(c);
-      if (url.pathname === "/api/tiktok") {
-        if (request.method === "GET") return await ttGet(c);
-        if (request.method === "POST") return await ttPost(c);
-        return json({ error: "method not allowed" }, 405);
+      if (url.pathname === "/api/tiktok" || url.pathname === "/api/tiktok/like" || url.pathname === "/api/tiktok/comment") {
+        const who = await ttWho(request, env);
+        const cw = { ...c, who };
+        let res;
+        if (url.pathname === "/api/tiktok") {
+          if (request.method === "GET") res = await ttGet(cw);
+          else if (request.method === "POST") res = await ttPost(cw);
+        } else if (request.method === "POST") {
+          res = url.pathname === "/api/tiktok/like" ? await ttLike(cw) : await ttComment(cw);
+        }
+        return withUidCookie(res || json({ error: "method not allowed" }, 405), who);
       }
       if (url.pathname === "/api/tiktok/thumb") return await ttThumb(c);
-      if (url.pathname === "/api/tiktok/comment") {
-        if (request.method === "POST") return await ttComment(c);
-        return json({ error: "method not allowed" }, 405);
-      }
-      if (url.pathname === "/api/tiktok/like") {
-        if (request.method === "POST") return await ttLike(c);
-        return json({ error: "method not allowed" }, 405);
-      }
       // 公開前の企画ページはトップに戻す
       const pageName = url.pathname.replace(/^\/+|\.html$|\/+$/g, "");
       if (PROJECTS.some((p) => p.page === pageName)) {
