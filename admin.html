@@ -77,6 +77,10 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .kgrid img{aspect-ratio:3/4!important}
 .kgrid input[type=text]{flex:none;width:100%;font:inherit;font-size:14px;border:2px solid var(--line,#f1d9e2);border-radius:10px;padding:6px 8px}
 .kgrid .kv{font-weight:700;font-size:14px}
+.kmv{display:flex;align-items:center;justify-content:space-between;gap:2px;min-width:0}
+.kmv span{font-size:12px;font-weight:700;color:var(--muted,#8a7480);white-space:nowrap}
+.kmv button{flex:0 1 auto;min-width:0;padding:4px 6px;font-size:12px}
+.kmv button:disabled{opacity:.3}
 .phgrid{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .phgrid li{flex-direction:column;align-items:stretch;padding:8px}
 .phgrid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;background:var(--line);display:block}
@@ -123,7 +127,7 @@ button,a,label,select,input,textarea,summary,.cal,.tl-scroll,.cloud{touch-action
   </section>
   <section id="kaoView" hidden style="display:flex;flex-direction:column;gap:12px">
     <p class="msg" id="kmsg"></p>
-    <p class="m">企画⑥「わたしの好きなちぃの好き顔」の候補の写真です。ここに載せた写真の中から、みんなが3つえらんで投票します。写真の下の欄に、ひとこと（例：ライブ中の笑顔）を付けられます（なくてもOK）。</p>
+    <p class="m">企画⑥「わたしの好きなちぃの好き顔」の候補の写真です。ここに載せた写真の中から、みんなが3つえらんで投票します。写真の下の欄に、ひとこと（例：ライブ中の笑顔）を付けられます（なくてもOK）。写真の上の ⇤ ◀ ▶ ⇥ で、投票ページに並ぶ順番を変えられます。</p>
     <div class="filters">
       <label class="kadd"><span>📷 候補の写真を追加（何枚でも）</span><input type="file" id="kfile" accept="image/*" multiple></label>
       <button class="sub" id="kreload" type="button">更新</button>
@@ -542,8 +546,20 @@ function drawKao(){
       if(pendingK!==x.id){ pendingK=x.id; drawKao(); return; }
       pendingK=null; try{ await call("kao_delete",x.id); await loadKao(); }catch(e){ $("kmsg").textContent=e.message; }
     }));
-    li.append(a,v,cap,pb); return li;
+    // 並べ替え（投票ページに出る順番）
+    const i=kaoItems.indexOf(x), mv=document.createElement("div"); mv.className="kmv";
+    const no=document.createElement("span"); no.textContent=`${i+1}番目`;
+    const mb=(label,to,tip)=>{ const b=document.createElement("button"); b.type="button"; b.className="sub"; b.textContent=label; b.title=tip; b.disabled=to<0||to>=kaoItems.length||to===i; b.onclick=()=>kaoMove(i,to); return b; };
+    mv.append(mb("⇤",0,"先頭へ"),mb("◀",i-1,"ひとつ前へ"),no,mb("▶",i+1,"ひとつ後ろへ"),mb("⇥",kaoItems.length-1,"最後へ"));
+    li.append(mv,a,v,cap,pb); return li;
   }));
+}
+let kaoSaving=null;
+async function kaoMove(from,to){
+  const [it]=kaoItems.splice(from,1); kaoItems.splice(to,0,it); drawKao();
+  // 続けて押しても、最後の並びだけ保存する
+  clearTimeout(kaoSaving);
+  kaoSaving=setTimeout(async()=>{ try{ await call("kao_order",null,{ids:kaoItems.map(x=>x.id)}); $("kmsg").textContent="並び順を保存しました。投票ページはこの順番で並びます。"; }catch(e){ $("kmsg").textContent=e.message; } },400);
 }
 // 写真を小さくしてから載せる（大きい写真：長い辺1280px、一覧用：長い辺480px）
 async function kaoBitmap(file){

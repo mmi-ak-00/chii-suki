@@ -516,6 +516,8 @@ async function ensureKao(env) {
     env.DB.prepare("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v INTEGER NOT NULL)"),
     env.DB.prepare("INSERT OR IGNORE INTO meta (k, v) VALUES ('kao_ver', 0)"),
   ]);
+  // 並び順の列（あとから足したので、まだ無いときだけ足す）
+  try { await env.DB.prepare("ALTER TABLE kao_photos ADD COLUMN sort INTEGER NOT NULL DEFAULT 0").run(); } catch (e) { /* もうある */ }
   kaoReady = true;
 }
 async function kaoMine(env, who) {
@@ -525,7 +527,7 @@ async function kaoMine(env, who) {
 // 候補の一覧（票の数は出さない）
 async function kaoGet({ env, who }) {
   await ensureKao(env);
-  const { results } = await env.DB.prepare("SELECT id, caption FROM kao_photos WHERE hidden=0 ORDER BY id").all();
+  const { results } = await env.DB.prepare("SELECT id, caption FROM kao_photos WHERE hidden=0 ORDER BY sort, id").all();
   return json({ pick: KAO_PICK, photos: results.map((r) => ({ id: r.id, caption: r.caption || "" })), mine: await kaoMine(env, who) });
 }
 // 投票（3つ。選び直すと前の票と入れ替わる）
@@ -553,7 +555,7 @@ async function kaoResult({ request, env, who }) {
   const url = new URL(request.url);
   const ver = (await env.DB.prepare("SELECT v FROM meta WHERE k='kao_ver'").first())?.v ?? 0;
   if (url.searchParams.get("v") === String(ver)) return json({ same: true });
-  const { results } = await env.DB.prepare("SELECT p.id, p.caption, (SELECT COUNT(*) FROM kao_votes v WHERE v.photo_id=p.id) AS n FROM kao_photos p WHERE p.hidden=0 ORDER BY n DESC, p.id").all();
+  const { results } = await env.DB.prepare("SELECT p.id, p.caption, (SELECT COUNT(*) FROM kao_votes v WHERE v.photo_id=p.id) AS n FROM kao_photos p WHERE p.hidden=0 ORDER BY n DESC, p.sort, p.id").all();
   const voters = await env.DB.prepare("SELECT COUNT(DISTINCT v.who) AS n FROM kao_votes v JOIN kao_photos p ON p.id=v.photo_id WHERE p.hidden=0").first();
   return json({ ver, voters: voters?.n || 0, mine, photos: results.map((r) => ({ id: r.id, caption: r.caption || "", n: r.n })) });
 }
@@ -920,7 +922,7 @@ async function adminPost({ request, env }) {
   switch (body.action) {
     case "kao_list": {
       await ensureKao(env);
-      const { results } = await env.DB.prepare("SELECT p.id, p.caption, p.hidden, p.at, (SELECT COUNT(*) FROM kao_votes v WHERE v.photo_id=p.id) AS n FROM kao_photos p ORDER BY p.id").all();
+      const { results } = await env.DB.prepare("SELECT p.id, p.caption, p.hidden, p.at, (SELECT COUNT(*) FROM kao_votes v WHERE v.photo_id=p.id) AS n FROM kao_photos p ORDER BY p.sort, p.id").all();
       const voters = await env.DB.prepare("SELECT COUNT(DISTINCT v.who) AS n FROM kao_votes v JOIN kao_photos p ON p.id=v.photo_id WHERE p.hidden=0").first();
       return await withPreviewCookie(json({ items: results, voters: voters?.n || 0, max: KAO_MAX }), env);
     }
@@ -934,7 +936,18 @@ async function adminPost({ request, env }) {
       if (cnt && cnt.n >= KAO_MAX) return json({ error: `候補は${KAO_MAX}枚までです。` }, 400);
       const caption = String(body.caption ?? "").replace(/\s+/g, " ").trim().slice(0, 30);
       await env.DB.batch([
-        env.DB.prepare("INSERT INTO kao_photos (caption, at, thumb, thumb_type, full, full_type) VALUES (?, ?, ?, ?, ?, ?)").bind(caption, Date.now(), String(body.thumb), tt, String(body.full), ft),
+        env.DB.prepare("INSERT INTO kao_photos (caption, at, thumb, thumb_type, full, full_type, sort) VALUES (?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(sort),0)+1 FROM kao_photos))").bind(caption, Date.now(), String(body.thumb), tt, String(body.full), ft),
+        env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='kao_ver'"),
+      ]);
+      return json({ ok: true });
+    }
+    case "kao_order": {
+      // 管理ページで決めた並び順をそのまま保存する
+      await ensureKao(env);
+      const ids = (Array.isArray(body.ids) ? body.ids : []).map(Number).filter((n) => Number.isInteger(n) && n > 0);
+      if (!ids.length) return json({ error: "並び順が届きませんでした。" }, 400);
+      await env.DB.batch([
+        ...ids.map((pid, i) => env.DB.prepare("UPDATE kao_photos SET sort=? WHERE id=?").bind(i + 1, pid)),
         env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='kao_ver'"),
       ]);
       return json({ ok: true });
