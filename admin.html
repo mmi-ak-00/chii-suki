@@ -72,6 +72,11 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .rlist li span{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
 .appr{display:flex;gap:8px;align-items:flex-start;font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 .appr input{margin-top:5px;width:18px;height:18px;accent-color:var(--accent);flex:none}
+.kadd{position:relative;display:inline-flex;align-items:center;font-weight:700;font-size:14px;border-radius:999px;padding:8px 14px;background:var(--accent,#e8517f);color:#fff;cursor:pointer}
+.kadd input{position:absolute;width:1px;height:1px;opacity:0}
+.kgrid img{aspect-ratio:3/4!important}
+.kgrid input[type=text]{flex:none;width:100%;font:inherit;font-size:14px;border:2px solid var(--line,#f1d9e2);border-radius:10px;padding:6px 8px}
+.kgrid .kv{font-weight:700;font-size:14px}
 .phgrid{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .phgrid li{flex-direction:column;align-items:stretch;padding:8px}
 .phgrid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;background:var(--line);display:block}
@@ -104,6 +109,7 @@ button,a,label,select,input,textarea,summary,.cal,.tl-scroll,.cloud{touch-action
     <button role="tab" data-tab="tiktok" aria-selected="false">TikTok<span class="cnt" id="c-tiktok"></span></button>
     <button role="tab" data-tab="photos" aria-selected="false">写真<span class="cnt" id="c-photos"></span><span class="cnt wait" id="c-wait" hidden></span></button>
     <button role="tab" data-tab="wakaru" aria-selected="false">わかる<span class="cnt" id="c-wakaru"></span></button>
+    <button role="tab" data-tab="kao" aria-selected="false">好き顔<span class="cnt" id="c-kao"></span></button>
     <button role="tab" data-tab="bans" aria-selected="false">投稿禁止<span class="cnt" id="c-bans"></span></button>
   </div>
   <section id="lettersView" hidden style="display:flex;flex-direction:column;gap:12px">
@@ -114,6 +120,17 @@ button,a,label,select,input,textarea,summary,.cal,.tl-scroll,.cloud{touch-action
     </div>
     <textarea id="copyout" hidden readonly aria-label="コピー用テキスト"></textarea>
     <ul id="letters"></ul>
+  </section>
+  <section id="kaoView" hidden style="display:flex;flex-direction:column;gap:12px">
+    <p class="msg" id="kmsg"></p>
+    <p class="m">企画⑥「わたしの好きなちぃの好き顔」の候補の写真です。ここに載せた写真の中から、みんなが3つえらんで投票します。写真の下の欄に、ひとこと（例：ライブ中の笑顔）を付けられます（なくてもOK）。</p>
+    <div class="filters">
+      <label class="kadd"><span>📷 候補の写真を追加（何枚でも）</span><input type="file" id="kfile" accept="image/*" multiple></label>
+      <button class="sub" id="kreload" type="button">更新</button>
+      <a class="pv" href="/kikaku6" target="_blank" rel="noopener">投票ページを見る</a>
+      <a class="pv" href="/kikaku6-kekka" target="_blank" rel="noopener">結果ページを見る</a>
+    </div>
+    <ul class="phgrid kgrid" id="klist"></ul>
   </section>
   <section id="bansView" hidden style="display:flex;flex-direction:column;gap:12px">
     <p class="msg" id="bmsg"></p>
@@ -291,7 +308,7 @@ $("tabs").addEventListener("click",e=>{
   const b=e.target.closest("[data-tab]"); if(!b) return;
   for(const x of $("tabs").querySelectorAll("[data-tab]")) x.setAttribute("aria-selected",x===b);
   const tab=b.dataset.tab;
-  $("lettersView").hidden=tab!=="letters"; $("projectsView").hidden=tab!=="projects"; $("tiktokView").hidden=tab!=="tiktok"; $("photosView").hidden=tab!=="photos"; $("wakaruView").hidden=tab!=="wakaru"; $("bansView").hidden=tab!=="bans";
+  $("lettersView").hidden=tab!=="letters"; $("projectsView").hidden=tab!=="projects"; $("tiktokView").hidden=tab!=="tiktok"; $("photosView").hidden=tab!=="photos"; $("wakaruView").hidden=tab!=="wakaru"; $("bansView").hidden=tab!=="bans"; $("kaoView").hidden=tab!=="kao";
   $("postsView").hidden=tab!=="posts";
   if(tab==="letters") loadLetters();
   if(tab==="projects") loadProjects();
@@ -300,6 +317,7 @@ $("tabs").addEventListener("click",e=>{
   if(tab==="photos") loadPhotos();
   if(tab==="wakaru") loadWK();
   if(tab==="bans") loadBans();
+  if(tab==="kao") loadKao();
   loadCounts();
 });
 const NUM="①②③④⑤⑥⑦⑧⑨⑩";
@@ -498,10 +516,63 @@ async function loadCounts(){
     const c=await call("counts");
     $("c-projects").textContent=`${c.projects}/${c.projectsTotal}`;
     $("c-posts").textContent=c.posts; $("c-letters").textContent=c.letters;
-    $("c-tiktok").textContent=c.tiktok; $("c-photos").textContent=c.photos; $("c-wakaru").textContent=c.wakaru??""; $("c-bans").textContent=c.bans||"";
+    $("c-tiktok").textContent=c.tiktok; $("c-photos").textContent=c.photos; $("c-wakaru").textContent=c.wakaru??""; $("c-bans").textContent=c.bans||""; $("c-kao").textContent=c.kao??"";
     $("c-wait").hidden=!c.photosPending; $("c-wait").textContent=c.photosPending?`待ち${c.photosPending}`:"";
   }catch(e){}
 }
+// ===== 企画⑥ 好き顔の候補 =====
+let kaoItems=[], kaoVoters=0, pendingK=null;
+async function loadKao(){
+  try{ const d=await call("kao_list"); kaoItems=d.items; kaoVoters=d.voters; drawKao(); }catch(e){ $("kmsg").textContent=e.message; }
+}
+function drawKao(){
+  const shown=kaoItems.filter(x=>!x.hidden).length;
+  $("kmsg").textContent=kaoItems.length?`候補 ${shown}枚（かくしている写真 ${kaoItems.length-shown}枚）・投票した人 ${kaoVoters}人`:"まだ候補の写真がありません。「候補の写真を追加」から載せてください。";
+  $("klist").replaceChildren(...kaoItems.map(x=>{
+    const li=document.createElement("li"); if(x.hidden) li.className="hid";
+    const a=document.createElement("a"); a.href=`/api/kao/img?id=${x.id}&s=full`; a.target="_blank"; a.rel="noopener";
+    const im=document.createElement("img"); im.src=`/api/kao/img?id=${x.id}`; im.alt=""; im.loading="lazy"; a.append(im);
+    const v=document.createElement("span"); v.className="kv"; v.textContent=`🗳️ ${x.n}票`+(x.hidden?"（かくし中）":"");
+    const cap=document.createElement("input"); cap.type="text"; cap.maxLength=30; cap.placeholder="ひとこと（任意）"; cap.value=x.caption||"";
+    cap.onchange=async()=>{ try{ await call("kao_caption",x.id,{caption:cap.value}); $("kmsg").textContent="ひとことを保存しました。"; x.caption=cap.value; }catch(e){ $("kmsg").textContent=e.message; } };
+    const pb=document.createElement("div"); pb.className="pb";
+    const mk=(label,cls,fn)=>{const b=document.createElement("button"); b.type="button"; b.className=cls; b.textContent=label; b.onclick=fn; return b;};
+    pb.append(mk(x.hidden?"もどす":"かくす","sub",async()=>{ try{ await call(x.hidden?"kao_show":"kao_hide",x.id); await loadKao(); }catch(e){ $("kmsg").textContent=e.message; } }));
+    pb.append(mk(pendingK===x.id?"本当に消す（票も消えます）":"消す","del",async()=>{
+      if(pendingK!==x.id){ pendingK=x.id; drawKao(); return; }
+      pendingK=null; try{ await call("kao_delete",x.id); await loadKao(); }catch(e){ $("kmsg").textContent=e.message; }
+    }));
+    li.append(a,v,cap,pb); return li;
+  }));
+}
+// 写真を小さくしてから載せる（大きい写真：長い辺1280px、一覧用：長い辺480px）
+async function kaoBitmap(file){
+  if(window.createImageBitmap){ try{ return await createImageBitmap(file,{imageOrientation:"from-image"}); }catch(e){} }
+  const url=URL.createObjectURL(file);
+  try{ const im=new Image(); im.src=url; await im.decode(); return im; } finally{ setTimeout(()=>URL.revokeObjectURL(url),1000); }
+}
+function kaoShrink(bm,max,q){
+  const w=bm.width, h=bm.height, s=Math.min(1,max/Math.max(w,h));
+  const c=document.createElement("canvas"); c.width=Math.round(w*s); c.height=Math.round(h*s);
+  c.getContext("2d").drawImage(bm,0,0,c.width,c.height);
+  return c.toDataURL("image/jpeg",q).split(",")[1];
+}
+$("kfile").addEventListener("change",async()=>{
+  const files=[...$("kfile").files]; $("kfile").value=""; if(!files.length) return;
+  let ok=0, ng=0;
+  for(let i=0;i<files.length;i++){
+    $("kmsg").textContent=`写真を載せています… ${i+1} / ${files.length}`;
+    try{
+      const bm=await kaoBitmap(files[i]);
+      const full=kaoShrink(bm,1280,0.85), thumb=kaoShrink(bm,480,0.8);
+      if(bm.close) bm.close();
+      await call("kao_add",null,{full,thumb}); ok++;
+    }catch(e){ ng++; }
+  }
+  await loadKao(); loadCounts();
+  $("kmsg").textContent=`${ok}枚載せました。`+(ng?`（${ng}枚は載せられませんでした）`:"");
+});
+$("kreload").addEventListener("click",loadKao);
 let bans=[];
 async function loadBans(){
   try{ const d=await call("ban_list"); bans=d.bans; drawBans(); }catch(e){ $("bmsg").textContent=e.message; }

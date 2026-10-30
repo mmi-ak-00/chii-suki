@@ -503,6 +503,73 @@ async function phImage({ request, env }) {
   return new Response(bytes, { headers: { "content-type": b.type, "cache-control": shown ? "public, max-age=86400" : "private, no-store" } });
 }
 
+// ===== 企画⑥ わたしの好きなちぃの好き顔（候補の写真から3つえらんで投票） =====
+const KAO_PICK = 3;           // 1人がえらぶ数
+const KAO_MAX = 60;           // 候補の写真の上限
+let kaoReady = false;
+async function ensureKao(env) {
+  if (kaoReady) return;
+  await env.DB.batch([
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS kao_photos (id INTEGER PRIMARY KEY AUTOINCREMENT, caption TEXT, at INTEGER NOT NULL, hidden INTEGER NOT NULL DEFAULT 0, thumb TEXT NOT NULL, thumb_type TEXT NOT NULL, full TEXT NOT NULL, full_type TEXT NOT NULL)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS kao_votes (who TEXT NOT NULL, photo_id INTEGER NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (who, photo_id))"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_kao_votes_photo ON kao_votes (photo_id)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v INTEGER NOT NULL)"),
+    env.DB.prepare("INSERT OR IGNORE INTO meta (k, v) VALUES ('kao_ver', 0)"),
+  ]);
+  kaoReady = true;
+}
+async function kaoMine(env, who) {
+  const { results } = await env.DB.prepare("SELECT v.photo_id AS id FROM kao_votes v JOIN kao_photos p ON p.id=v.photo_id WHERE v.who=? AND p.hidden=0 ORDER BY v.at, v.photo_id").bind(who.key).all();
+  return results.map((r) => r.id);
+}
+// 候補の一覧（票の数は出さない）
+async function kaoGet({ env, who }) {
+  await ensureKao(env);
+  const { results } = await env.DB.prepare("SELECT id, caption FROM kao_photos WHERE hidden=0 ORDER BY id").all();
+  return json({ pick: KAO_PICK, photos: results.map((r) => ({ id: r.id, caption: r.caption || "" })), mine: await kaoMine(env, who) });
+}
+// 投票（3つ。選び直すと前の票と入れ替わる）
+async function kaoVote({ request, env, who }) {
+  let body; try { body = await request.json(); } catch { return json({ error: "送れませんでした。" }, 400); }
+  const ids = [...new Set((Array.isArray(body?.ids) ? body.ids : []).map(Number).filter((n) => Number.isInteger(n) && n > 0))];
+  if (ids.length !== KAO_PICK) return json({ error: `${KAO_PICK}つえらんでね。` }, 400);
+  await ensureKao(env);
+  const ph = ids.map(() => "?").join(",");
+  const ok = await env.DB.prepare(`SELECT COUNT(*) AS n FROM kao_photos WHERE hidden=0 AND id IN (${ph})`).bind(...ids).first();
+  if (!ok || ok.n !== KAO_PICK) return json({ error: "えらんだ写真が見つかりませんでした。ページを読み直してね。" }, 400);
+  const now = Date.now();
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM kao_votes WHERE who=?").bind(who.key),
+    ...ids.map((id, i) => env.DB.prepare("INSERT INTO kao_votes (who, photo_id, at) VALUES (?, ?, ?)").bind(who.key, id, now + i)),
+    env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='kao_ver'"),
+  ]);
+  return json({ ok: true, mine: ids });
+}
+// 結果（投票した人と管理者だけ）
+async function kaoResult({ request, env, who }) {
+  await ensureKao(env);
+  const mine = await kaoMine(env, who);
+  if (!mine.length && !(await isPreviewer(request, env))) return json({ needVote: true, error: "投票すると結果が見られます。" }, 403);
+  const url = new URL(request.url);
+  const ver = (await env.DB.prepare("SELECT v FROM meta WHERE k='kao_ver'").first())?.v ?? 0;
+  if (url.searchParams.get("v") === String(ver)) return json({ same: true });
+  const { results } = await env.DB.prepare("SELECT p.id, p.caption, (SELECT COUNT(*) FROM kao_votes v WHERE v.photo_id=p.id) AS n FROM kao_photos p WHERE p.hidden=0 ORDER BY n DESC, p.id").all();
+  const voters = await env.DB.prepare("SELECT COUNT(DISTINCT v.who) AS n FROM kao_votes v JOIN kao_photos p ON p.id=v.photo_id WHERE p.hidden=0").first();
+  return json({ ver, voters: voters?.n || 0, mine, photos: results.map((r) => ({ id: r.id, caption: r.caption || "", n: r.n })) });
+}
+async function kaoImage({ request, env }) {
+  const url = new URL(request.url);
+  const id = Number(url.searchParams.get("id"));
+  const size = url.searchParams.get("s") === "full" ? "full" : "thumb";
+  if (!id) return new Response("", { status: 404 });
+  await ensureKao(env);
+  const b = await env.DB.prepare(`SELECT hidden, ${size} AS data, ${size}_type AS type FROM kao_photos WHERE id=?`).bind(id).first();
+  if (!b || (b.hidden && !(await isPreviewer(request, env)))) return new Response("", { status: 404 });
+  const bytes = b64Bytes(b.data);
+  if (!bytes) return new Response("", { status: 404 });
+  return new Response(bytes, { headers: { "content-type": b.type, "cache-control": b.hidden ? "private, no-store" : "public, max-age=86400" } });
+}
+
 // ===== 企画⑤ ちぃちゃんの好きパフォーマンス（「わかる！」カード） =====
 const WK_MAX = 40;          // カード1枚の文字数
 const WK_WAIT_SEC = 10;     // 同じ人がカードを続けて出せるまでの秒数
@@ -765,7 +832,7 @@ const PROJECTS = [
   { id: "kikaku3", title: "ちぃちゃんの推しTikTok", desc: "お気に入りのTikTokを教えて🎬", href: "/kikaku3", page: "kikaku3", open: false, soon: "10/28公開予定", showAfter: "kikaku2" },
   { id: "kikaku4", title: "23歳のちぃ記録", desc: "23歳のちぃちゃんの1年を振り返ろう🗓️", href: "/kikaku4", page: "kikaku4", open: false, soon: "10/29公開予定", showAfter: "kikaku3" },
   { id: "kikaku5", title: "ちぃちゃんの好きパフォーマンス", desc: "その好きポイント「わかる！」🙌", href: "/kikaku5", page: "kikaku5", open: false, soon: "10/30公開予定", showAfter: "kikaku4" },
-  { id: "kikaku6", title: "（企画⑥・内容は準備中）", desc: "", href: "", open: false, soon: "10/31公開予定", showAfter: "kikaku5" },
+  { id: "kikaku6", title: "わたしの好きなちぃの好き顔", desc: "好きな表情を3つえらんで投票しよう🗳️", href: "/kikaku6", page: "kikaku6", pages: ["kikaku6-kekka"], open: false, soon: "10/31公開予定", showAfter: "kikaku5" },
 ];
 
 let projectsReady = false;
@@ -851,6 +918,50 @@ async function adminPost({ request, env }) {
   const id = Number(body.id);
   const bump = env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='ver'");
   switch (body.action) {
+    case "kao_list": {
+      await ensureKao(env);
+      const { results } = await env.DB.prepare("SELECT p.id, p.caption, p.hidden, p.at, (SELECT COUNT(*) FROM kao_votes v WHERE v.photo_id=p.id) AS n FROM kao_photos p ORDER BY p.id").all();
+      const voters = await env.DB.prepare("SELECT COUNT(DISTINCT v.who) AS n FROM kao_votes v JOIN kao_photos p ON p.id=v.photo_id WHERE p.hidden=0").first();
+      return await withPreviewCookie(json({ items: results, voters: voters?.n || 0, max: KAO_MAX }), env);
+    }
+    case "kao_add": {
+      await ensureKao(env);
+      const full = b64Bytes(String(body.full ?? "")), thumb = b64Bytes(String(body.thumb ?? ""));
+      const ft = full && imgType(full), tt = thumb && imgType(thumb);
+      if (!ft || !tt) return json({ error: "写真を読み込めませんでした。" }, 400);
+      if (full.length > 1_200_000 || thumb.length > 250_000) return json({ error: "写真が大きすぎます。" }, 400);
+      const cnt = await env.DB.prepare("SELECT COUNT(*) AS n FROM kao_photos").first();
+      if (cnt && cnt.n >= KAO_MAX) return json({ error: `候補は${KAO_MAX}枚までです。` }, 400);
+      const caption = String(body.caption ?? "").replace(/\s+/g, " ").trim().slice(0, 30);
+      await env.DB.batch([
+        env.DB.prepare("INSERT INTO kao_photos (caption, at, thumb, thumb_type, full, full_type) VALUES (?, ?, ?, ?, ?, ?)").bind(caption, Date.now(), String(body.thumb), tt, String(body.full), ft),
+        env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='kao_ver'"),
+      ]);
+      return json({ ok: true });
+    }
+    case "kao_caption": {
+      await ensureKao(env);
+      const caption = String(body.caption ?? "").replace(/\s+/g, " ").trim().slice(0, 30);
+      await env.DB.prepare("UPDATE kao_photos SET caption=? WHERE id=?").bind(caption, id).run();
+      return json({ ok: true });
+    }
+    case "kao_hide": case "kao_show": {
+      await ensureKao(env);
+      await env.DB.batch([
+        env.DB.prepare("UPDATE kao_photos SET hidden=? WHERE id=?").bind(body.action === "kao_hide" ? 1 : 0, id),
+        env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='kao_ver'"),
+      ]);
+      return json({ ok: true });
+    }
+    case "kao_delete": {
+      await ensureKao(env);
+      await env.DB.batch([
+        env.DB.prepare("DELETE FROM kao_votes WHERE photo_id=?").bind(id),
+        env.DB.prepare("DELETE FROM kao_photos WHERE id=?").bind(id),
+        env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='kao_ver'"),
+      ]);
+      return json({ ok: true });
+    }
     case "ban_item": {
       const r = await banItem(env, String(body.kind || ""), id);
       return r.error ? json(r, 400) : json(r);
@@ -922,6 +1033,7 @@ async function adminPost({ request, env }) {
         tiktok: await one("SELECT COUNT(*) AS n FROM tiktok"),
         photos: await one("SELECT COUNT(*) AS n FROM photos"),
         wakaru: await (async () => { await ensureWK(env); return one("SELECT COUNT(*) AS n FROM wk_cards"); })(),
+        kao: await (async () => { await ensureKao(env); return one("SELECT COUNT(DISTINCT who) AS n FROM kao_votes"); })(),
         photosPending: await one("SELECT COUNT(*) AS n FROM photos WHERE status='pending'"),
         bans: await (async () => { await ensureBan(env); return one("SELECT COUNT(DISTINCT grp) AS n FROM bans"); })(),
       });
@@ -1089,11 +1201,16 @@ export default {
         return withUidCookie(res || json({ error: "method not allowed" }, 405), who);
       }
       if (url.pathname === "/api/tiktok/thumb") return await ttThumb(c);
+      if (url.pathname === "/api/kao") return request.method === "POST" ? json({ error: "method not allowed" }, 405) : await kaoGet(c);
+      if (url.pathname === "/api/kao/vote") return request.method === "POST" ? await kaoVote(c) : json({ error: "method not allowed" }, 405);
+      if (url.pathname === "/api/kao/result") return await kaoResult(c);
+      if (url.pathname === "/api/kao/img") return await kaoImage(c);
       // 公開前の企画ページはトップに戻す
       const pageName = url.pathname.replace(/^\/+|\.html$|\/+$/g, "");
-      if (PROJECTS.some((p) => p.page === pageName)) {
+      const ofPage = (x) => x.page === pageName || (x.pages || []).includes(pageName);
+      if (PROJECTS.some(ofPage)) {
         const list = await projectStates(env);
-        const p = list.find((x) => x.page === pageName);
+        const p = list.find(ofPage);
         if (p && !p.open) {
           // Xなどのリンク読み取り役（ボット）には、公開前でもページの画像・タイトルだけは見せる
           const ua = request.headers.get("User-Agent") || "";
