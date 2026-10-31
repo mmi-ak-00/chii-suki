@@ -77,6 +77,8 @@ button,a,input{touch-action:manipulation}
 .picks span.on{border:2px solid var(--accent)}
 .barmsg{flex:1 1 120px;font-size:13px;font-weight:700;line-height:1.5}
 .barmsg small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.done.flash{animation:flash 1.4s ease}
+@keyframes flash{0%{transform:scale(.96);box-shadow:0 0 0 0 rgba(232,81,127,.5)}40%{transform:scale(1.02);box-shadow:0 0 0 10px rgba(232,81,127,0)}100%{transform:none}}
 .done{display:flex;flex-direction:column;gap:10px;align-items:flex-start;background:var(--surface);border:2px solid var(--line);border-radius:22px;padding:16px}
 .done p{margin:0}
 .done b{font-family:var(--display);font-size:17px}
@@ -153,6 +155,8 @@ function drawBar(){
   else if(voted&&same(sel,mine)){ $("barmsg").innerHTML="この3つで投票ずみです✅<small>選び直すと、前の票と入れ替わります</small>"; $("go").disabled=true; $("go").textContent="投票ずみ"; }
   else { $("barmsg").innerHTML="この3つでOK？"; $("go").disabled=false; $("go").textContent=voted?"この3つで選び直す":"この3つで投票する"; }
 }
+let voted=false;
+function flash(){ const d=$("done"); d.classList.remove("flash"); void d.offsetWidth; d.classList.add("flash"); }
 $("go").addEventListener("click",async()=>{
   if(sending||sel.length!==PICK) return;
   sending=true; $("go").disabled=true;
@@ -162,9 +166,13 @@ $("go").addEventListener("click",async()=>{
     if(!r.ok){ toast(d.error||"投票できませんでした。少し待ってからもう一度どうぞ。"); return; }
     const again=mine.length>0; mine=d.mine||sel.slice();
     $("done").hidden=false; $("doneT").textContent=again?"選び直しました！":"投票しました！ありがとう💗";
-    $("done").scrollIntoView({behavior:"smooth",block:"center"});
+    voted=true;
   }catch(e){ toast("送れませんでした。通信を確認してもう一度どうぞ。"); }
-  finally{ sending=false; render(); }
+  finally{
+    sending=false; render();
+    // 投票できたら、ページのいちばん上まで戻して「投票しました！」を見せる（並べ直したあとに動かす）
+    if(voted){ voted=false; requestAnimationFrame(()=>{ window.scrollTo({top:0,behavior:"smooth"}); flash(); }); }
+  }
 });
 function openViewer(p){
   viewing=p; $("vimg").src=img(p.id,"full"); $("vcap").textContent=p.caption||"";
