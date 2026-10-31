@@ -73,7 +73,8 @@ button,a,input{touch-action:manipulation}
 .pd .bk{font-size:11px;color:var(--muted);line-height:1.5;display:flex;flex-wrap:wrap;justify-content:center;column-gap:6px}
 .pd .bk span{white-space:nowrap}
 .row .bk{font-size:11px;color:var(--muted)}
-.pd .vt small{font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted);margin-left:4px}
+.pd .vt small{font-family:var(--body);font-weight:700;font-size:12px;color:var(--muted);margin-left:2px}
+.row .tp b small{font-size:11px;color:var(--muted);margin-left:1px}
 .pd .cp{font-size:12px;color:var(--muted);line-height:1.4;min-height:1.4em}
 .pd.r1 .vt{font-size:18px}
 .mybadge{position:absolute;right:6px;bottom:6px;font-size:10px;font-weight:700;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:1px 8px}
@@ -133,18 +134,18 @@ $("viewer").addEventListener("click",e=>{ if(e.target===$("viewer")) $("viewer")
 function render(d){
   const ps=d.photos||[], voters=d.voters||0, minel=CLEAN?[]:(d.mine||[]), pts=d.pts||[3,2,1];
   const myRank=id=>minel.indexOf(id)+1;   // 自分がつけた順位（0＝えらんでいない）
-  // 点数・1位の数・2位の数がすべて同じなら同じ順位
-  let rank=0, prev=""; ps.forEach((p,i)=>{ const k=`${p.pt}-${p.n1}-${p.n2}`; if(k!==prev){ rank=i+1; prev=k; } p.rank=rank; });
+  // 同じptなら同じ順位
+  let rank=0, prev=-1; ps.forEach((p,i)=>{ if(p.pt!==prev){ rank=i+1; prev=p.pt; } p.rank=rank; });
   const bk=p=>`1位${p.n1}人・2位${p.n2}人・3位${p.n3}人`;
-  $("meta").textContent=`${voters}人が投票（1位${pts[0]}点・2位${pts[1]}点・3位${pts[2]}点）`+(CLEAN?"":"・自動で更新されます");
+  $("meta").textContent=`${voters}人が投票（1位${pts[0]}pt・2位${pts[1]}pt・3位${pts[2]}pt）`+(CLEAN?"":"・自動で更新されます");
   const top=ps.slice(0,3), order=[1,0,2].filter(i=>top[i]);
   $("podium").replaceChildren(...order.map(i=>{
     const p=top[i], b=document.createElement("button"); b.type="button"; b.className="pd r"+p.rank;
     b.style.setProperty("--c",COLORS[Math.min(p.rank,3)-1]);
-    const label=`${p.rank}位 ${p.pt}点（${bk(p)}）${p.caption?"　"+p.caption:""}`;
+    const label=`${p.rank}位 ${p.pt}pt${p.caption?"　"+p.caption:""}`;
     b.setAttribute("aria-label",label);
     const mr=myRank(p.id);
-    b.innerHTML=`<span class="rk">${p.rank===1?"👑 ":""}${p.rank}位</span><div class="fr"><img alt="" src="${img(p.id)}">${mr?`<span class="mybadge">あなたの${mr}位</span>`:""}</div><div class="vt">${p.pt}点</div><div class="bk"><span>1位${p.n1}人</span><span>2位${p.n2}人</span><span>3位${p.n3}人</span></div>`;
+    b.innerHTML=`<span class="rk">${p.rank===1?"👑 ":""}${p.rank}位</span><div class="fr"><img alt="" src="${img(p.id)}">${mr?`<span class="mybadge">あなたの${mr}位</span>`:""}</div><div class="vt">${p.pt}<small>pt</small></div>`;
     const cp=document.createElement("div"); cp.className="cp"; cp.textContent=p.caption||""; b.append(cp);
     b.onclick=()=>view(p,label);
     return b;
@@ -153,11 +154,10 @@ function render(d){
   $("rows").replaceChildren(...ps.slice(3).map(p=>{
     const mr=myRank(p.id);
     const li=document.createElement("li"); li.className="row"+(mr?" mine":"");
-    li.innerHTML=`<span class="n">${p.rank}</span><img alt="" loading="lazy" src="${img(p.id)}"><div class="bd"><div class="tp"><span class="cp"></span><b>${p.pt}点</b></div><div class="gb"><i style="width:${p.pt/max*100}%"></i></div><span class="bk"></span></div>`;
+    li.innerHTML=`<span class="n">${p.rank}</span><img alt="" loading="lazy" src="${img(p.id)}"><div class="bd"><div class="tp"><span class="cp"></span><b>${p.pt}<small>pt</small></b></div><div class="gb"><i style="width:${p.pt/max*100}%"></i></div></div>`;
     li.querySelector(".cp").textContent=p.caption||"";
-    li.querySelector(".bk").textContent=bk(p);
     if(mr){ const m=document.createElement("span"); m.className="me"; m.textContent=` あなたの${mr}位`; li.querySelector(".cp").append(m); }
-    li.onclick=()=>view(p,`${p.rank}位 ${p.pt}点（${bk(p)}）${p.caption?"　"+p.caption:""}`);
+    li.onclick=()=>view(p,`${p.rank}位 ${p.pt}pt${p.caption?"　"+p.caption:""}`);
     return li;
   }));
 }

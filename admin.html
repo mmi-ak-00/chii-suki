@@ -533,7 +533,7 @@ let kaoItems=[], kaoVoters=0, pendingK=null, kaoPoll="kao", kaoPts=[1,1,1];
 // 好き顔（企画⑥）とコスプレ（企画⑦）は同じ画面を使い回す
 const KAO_INFO={
   kao:{page:"kikaku6",desc:"企画⑥「わたしの選ぶちぃの好き顔」の候補の写真です。ここに載せた写真の中から、みんなが3つえらんで投票します（どれも1票ずつ）。"},
-  cos:{page:"kikaku7",desc:"企画⑦「わたしの選ぶ好きなちぃコス」の候補の写真です。みんなが好きな順に3つえらんで投票します（1位3点・2位2点・3位1点）。"},
+  cos:{page:"kikaku7",desc:"企画⑦「わたしの選ぶ好きなちぃコス」の候補の写真です。みんなが好きな順に3つえらんで投票します（1位3pt・2位2pt・3位1pt）。"},
 };
 function kaoSetup(){
   const I=KAO_INFO[kaoPoll];
@@ -557,7 +557,7 @@ function drawKao(){
     const li=document.createElement("li"); if(x.hidden) li.className="hid";
     const a=document.createElement("a"); a.href=`/api/kao/img?id=${x.id}&s=full`; a.target="_blank"; a.rel="noopener";
     const im=document.createElement("img"); im.src=`/api/kao/img?id=${x.id}`; im.alt=""; im.loading="lazy"; a.append(im);
-    const v=document.createElement("span"); v.className="kv"; v.textContent=(kaoPts[0]>1?`🏆 ${x.pt}点（${x.n}票）`:`🗳️ ${x.n}票`)+(x.hidden?"（かくし中）":"");
+    const v=document.createElement("span"); v.className="kv"; v.textContent=(kaoPts[0]>1?`🏆 ${x.pt}pt（${x.n}票）`:`🗳️ ${x.n}票`)+(x.hidden?"（かくし中）":"");
     const cap=document.createElement("input"); cap.type="text"; cap.maxLength=30; cap.placeholder="ひとこと（任意）"; cap.value=x.caption||"";
     cap.onchange=async()=>{ try{ await call("kao_caption",x.id,{caption:cap.value}); $("kmsg").textContent="ひとことを保存しました。"; x.caption=cap.value; }catch(e){ $("kmsg").textContent=e.message; } };
     const pb=document.createElement("div"); pb.className="pb";

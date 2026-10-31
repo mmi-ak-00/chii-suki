@@ -89,7 +89,7 @@ button,a,input{touch-action:manipulation}
   <header>
     <h1>わたしの選ぶ好きな<span>ちぃ</span>コス</h1>
     <p class="sub">好きなちぃコスに投票しよう👚</p>
-    <p class="lead">いちばん好きなコスプレから順に、3つタップしてね。1番目にえらんだのが<b>1位（3点）</b>、2番目が<b>2位（2点）</b>、3番目が<b>3位（1点）</b>になります。投票すると、みんなの結果が見られるようになります。あとから選び直すこともできます（前の票と入れ替わります）。</p>
+    <p class="lead">いちばん好きなコスプレから順に、3つタップしてね。1番目にえらんだのが<b>1位（3pt）</b>、2番目が<b>2位（2pt）</b>、3番目が<b>3位（1pt）</b>になります。投票すると、みんなの結果が見られるようになります。あとから選び直すこともできます（前の票と入れ替わります）。</p>
   </header>
   <div class="done" id="done" hidden>
     <p><b id="doneT">投票しました！ありがとう💗</b></p>
@@ -149,7 +149,7 @@ function drawBar(){
     s.className=id?"on":""; s.replaceChildren(id? Object.assign(document.createElement("img"),{src:img(id),alt:""}) : document.createTextNode(`${i+1}位`));
   }
   const left=PICK-sel.length, voted=mine.length>0;
-  const PT=["3点","2点","1点"];
+  const PT=["3pt","2pt","1pt"];
   if(left>0){ $("barmsg").innerHTML=`次は<b>${sel.length+1}位（${PT[sel.length]}）</b>をえらんでね`+(voted?"<small>投票ずみ。選び直すと前の票と入れ替わります</small>":""); $("go").disabled=true; $("go").textContent="投票する"; }
   else if(voted&&same(sel,mine)){ $("barmsg").innerHTML="この順位で投票ずみです✅<small>選び直すと、前の票と入れ替わります</small>"; $("go").disabled=true; $("go").textContent="投票ずみ"; }
   else { $("barmsg").innerHTML="この順位でOK？<small>順位を変えたいときは、写真をタップして外してから選び直してね</small>"; $("go").disabled=false; $("go").textContent=voted?"この順位で選び直す":"この順位で投票する"; }
