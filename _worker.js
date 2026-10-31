@@ -503,7 +503,7 @@ async function phImage({ request, env }) {
   return new Response(bytes, { headers: { "content-type": b.type, "cache-control": shown ? "public, max-age=86400" : "private, no-store" } });
 }
 
-// ===== 企画⑥ わたしの選ぶちぃの好き顔／企画⑦ ちぃの好きコスプレ（候補の写真から3つえらんで投票） =====
+// ===== 企画⑥ わたしの選ぶちぃの好き顔／企画⑦ わたしの選ぶ好きなちぃコス（候補の写真から3つえらんで投票） =====
 // 2つの投票は同じしくみ。poll で見分ける（kao＝企画⑥、cos＝企画⑦）
 // pts：えらんだ順（1番目・2番目・3番目）の点数。企画⑥は全部1点、企画⑦は3点・2点・1点
 const POLLS = { kao: { pts: [1, 1, 1] }, cos: { pts: [3, 2, 1] } };
@@ -857,7 +857,7 @@ const PROJECTS = [
   { id: "kikaku4", title: "23歳のちぃ記録", desc: "23歳のちぃちゃんの1年を振り返ろう🗓️", href: "/kikaku4", page: "kikaku4", open: false, soon: "10/29公開予定", showAfter: "kikaku3" },
   { id: "kikaku5", title: "ちぃちゃんの好きパフォーマンス", desc: "その好きポイント「わかる！」🙌", href: "/kikaku5", page: "kikaku5", open: false, soon: "10/30公開予定", showAfter: "kikaku4" },
   { id: "kikaku6", title: "わたしの選ぶちぃの好き顔", desc: "好きなちぃ顔に投票しよう🗳️", href: "/kikaku6", page: "kikaku6", pages: ["kikaku6-kekka"], open: false, soon: "10/31公開予定", showAfter: "kikaku5" },
-  { id: "kikaku7", title: "ちぃの好きコスプレ", desc: "好きなコスプレを1〜3位で投票しよう👗", href: "/kikaku7", page: "kikaku7", pages: ["kikaku7-kekka"], open: false, soon: "11/1公開予定", showAfter: "kikaku6" },
+  { id: "kikaku7", title: "わたしの選ぶ好きなちぃコス", desc: "好きなちぃコスに投票しよう👚", href: "/kikaku7", page: "kikaku7", pages: ["kikaku7-kekka"], open: false, soon: "11/1公開予定", showAfter: "kikaku6" },
 ];
 
 let projectsReady = false;
