@@ -1251,7 +1251,9 @@ export default {
     }
     return null;
     })();
-    if (out) return isApi ? withUidCookie(out, who) : out;
+    // 画像・動画の返事では「同じ人」の印を新しく配らない（同時にたくさん届くと印が入れ替わってしまうため）
+    const mediaPath = /^\/api\/(kao\/img|photos\/img|wakaru\/video|tiktok\/thumb)$/.test(url.pathname);
+    if (out) return isApi && !mediaPath ? withUidCookie(out, who) : out;
     const res = await env.ASSETS.fetch(request);
     // Xなどで画像が出るよう、共有用画像のアドレスを「https://〜/ogp.png」の形に直す
     const type = res.headers.get("content-type") || "";

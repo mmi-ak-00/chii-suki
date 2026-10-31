@@ -119,17 +119,20 @@ button,a,input{touch-action:manipulation}
 <script>
 const $=id=>document.getElementById(id);
 let ver=-1, timer=null;
+// 管理ページから「スクショ用」で開いたときは、自分の票の印と「選び直す」を出さない
+const CLEAN=/[?&]sukusho/.test(location.search);
+if(CLEAN){ document.querySelector(".acts").hidden=true; document.querySelector(".back").hidden=true; }
 const img=(id,s)=>`/api/kao/img?id=${id}${s?"&s="+s:""}`;
 const COLORS=["#e8a33c","#9aa5b4","#c27c4e"];   // 金・銀・銅
 function view(p,label){ $("vimg").src=img(p.id,"full"); $("vcap").textContent=label; $("viewer").hidden=false; }
 $("vclose").onclick=()=>$("viewer").hidden=true;
 $("viewer").addEventListener("click",e=>{ if(e.target===$("viewer")) $("viewer").hidden=true; });
 function render(d){
-  const ps=d.photos||[], voters=d.voters||0, mine=new Set(d.mine||[]);
+  const ps=d.photos||[], voters=d.voters||0, mine=new Set(CLEAN?[]:(d.mine||[]));
   // 同じ票数は同じ順位
   let rank=0, prev=-1; ps.forEach((p,i)=>{ if(p.n!==prev){ rank=i+1; prev=p.n; } p.rank=rank; });
   const pct=p=>voters?Math.round(p.n/voters*100):0;
-  $("meta").textContent=`${voters}人が投票（1人3票）・自動で更新されます`;
+  $("meta").textContent=CLEAN?`${voters}人が投票（1人3票）`:`${voters}人が投票（1人3票）・自動で更新されます`;
   const top=ps.slice(0,3), order=[1,0,2].filter(i=>top[i]);
   $("podium").replaceChildren(...order.map(i=>{
     const p=top[i], b=document.createElement("button"); b.type="button"; b.className="pd r"+p.rank;
