@@ -503,9 +503,13 @@ async function phImage({ request, env }) {
   return new Response(bytes, { headers: { "content-type": b.type, "cache-control": shown ? "public, max-age=86400" : "private, no-store" } });
 }
 
-// ===== 企画⑥ わたしの選ぶちぃの好き顔（候補の写真から3つえらんで投票） =====
+// ===== 企画⑥ わたしの選ぶちぃの好き顔／企画⑦ ちぃの好きコスプレ（候補の写真から3つえらんで投票） =====
+// 2つの投票は同じしくみ。poll で見分ける（kao＝企画⑥、cos＝企画⑦）
+// pts：えらんだ順（1番目・2番目・3番目）の点数。企画⑥は全部1点、企画⑦は3点・2点・1点
+const POLLS = { kao: { pts: [1, 1, 1] }, cos: { pts: [3, 2, 1] } };
 const KAO_PICK = 3;           // 1人がえらぶ数
-const KAO_MAX = 60;           // 候補の写真の上限
+const KAO_MAX = 60;           // 候補の写真の上限（投票ごと）
+function pollOf(x) { const p = String(x || "kao"); return POLLS[p] ? p : "kao"; }
 let kaoReady = false;
 async function ensureKao(env) {
   if (kaoReady) return;
@@ -515,49 +519,67 @@ async function ensureKao(env) {
     env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_kao_votes_photo ON kao_votes (photo_id)"),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v INTEGER NOT NULL)"),
     env.DB.prepare("INSERT OR IGNORE INTO meta (k, v) VALUES ('kao_ver', 0)"),
+    env.DB.prepare("INSERT OR IGNORE INTO meta (k, v) VALUES ('cos_ver', 0)"),
   ]);
-  // 並び順の列（あとから足したので、まだ無いときだけ足す）
-  try { await env.DB.prepare("ALTER TABLE kao_photos ADD COLUMN sort INTEGER NOT NULL DEFAULT 0").run(); } catch (e) { /* もうある */ }
+  // あとから足した列（まだ無いときだけ足す）
+  for (const sql of [
+    "ALTER TABLE kao_photos ADD COLUMN sort INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE kao_photos ADD COLUMN poll TEXT NOT NULL DEFAULT 'kao'",
+    "ALTER TABLE kao_votes ADD COLUMN poll TEXT NOT NULL DEFAULT 'kao'",
+    "ALTER TABLE kao_votes ADD COLUMN rk INTEGER NOT NULL DEFAULT 0",
+  ]) { try { await env.DB.prepare(sql).run(); } catch (e) { /* もうある */ } }
   kaoReady = true;
 }
-async function kaoMine(env, who) {
-  const { results } = await env.DB.prepare("SELECT v.photo_id AS id FROM kao_votes v JOIN kao_photos p ON p.id=v.photo_id WHERE v.who=? AND p.hidden=0 ORDER BY v.at, v.photo_id").bind(who.key).all();
+const pollVerKey = (poll) => poll + "_ver";
+// 点数の計算式（えらんだ順 rk → 点数）
+function ptsSql(poll) { const p = POLLS[poll].pts; return `CASE v.rk WHEN 1 THEN ${p[0]} WHEN 2 THEN ${p[1]} WHEN 3 THEN ${p[2]} ELSE 1 END`; }
+async function kaoMine(env, who, poll) {
+  const { results } = await env.DB.prepare("SELECT v.photo_id AS id FROM kao_votes v JOIN kao_photos p ON p.id=v.photo_id WHERE v.who=? AND v.poll=? AND p.hidden=0 ORDER BY v.rk, v.at, v.photo_id").bind(who.key, poll).all();
   return results.map((r) => r.id);
 }
 // 候補の一覧（票の数は出さない）
-async function kaoGet({ env, who }) {
+async function kaoGet({ request, env, who }) {
+  const poll = pollOf(new URL(request.url).searchParams.get("p"));
   await ensureKao(env);
-  const { results } = await env.DB.prepare("SELECT id, caption FROM kao_photos WHERE hidden=0 ORDER BY sort, id").all();
-  return json({ pick: KAO_PICK, photos: results.map((r) => ({ id: r.id, caption: r.caption || "" })), mine: await kaoMine(env, who) });
+  const { results } = await env.DB.prepare("SELECT id, caption FROM kao_photos WHERE hidden=0 AND poll=? ORDER BY sort, id").bind(poll).all();
+  return json({ pick: KAO_PICK, pts: POLLS[poll].pts, photos: results.map((r) => ({ id: r.id, caption: r.caption || "" })), mine: await kaoMine(env, who, poll) });
 }
-// 投票（3つ。選び直すと前の票と入れ替わる）
+// 投票（3つ。えらんだ順が1位・2位・3位。選び直すと前の票と入れ替わる）
 async function kaoVote({ request, env, who }) {
   let body; try { body = await request.json(); } catch { return json({ error: "送れませんでした。" }, 400); }
+  const poll = pollOf(body?.poll);
   const ids = [...new Set((Array.isArray(body?.ids) ? body.ids : []).map(Number).filter((n) => Number.isInteger(n) && n > 0))];
   if (ids.length !== KAO_PICK) return json({ error: `${KAO_PICK}つえらんでね。` }, 400);
   await ensureKao(env);
   const ph = ids.map(() => "?").join(",");
-  const ok = await env.DB.prepare(`SELECT COUNT(*) AS n FROM kao_photos WHERE hidden=0 AND id IN (${ph})`).bind(...ids).first();
+  const ok = await env.DB.prepare(`SELECT COUNT(*) AS n FROM kao_photos WHERE hidden=0 AND poll=? AND id IN (${ph})`).bind(poll, ...ids).first();
   if (!ok || ok.n !== KAO_PICK) return json({ error: "えらんだ写真が見つかりませんでした。ページを読み直してね。" }, 400);
   const now = Date.now();
   await env.DB.batch([
-    env.DB.prepare("DELETE FROM kao_votes WHERE who=?").bind(who.key),
-    ...ids.map((id, i) => env.DB.prepare("INSERT INTO kao_votes (who, photo_id, at) VALUES (?, ?, ?)").bind(who.key, id, now + i)),
-    env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='kao_ver'"),
+    env.DB.prepare("DELETE FROM kao_votes WHERE who=? AND poll=?").bind(who.key, poll),
+    ...ids.map((id, i) => env.DB.prepare("INSERT INTO kao_votes (who, photo_id, at, poll, rk) VALUES (?, ?, ?, ?, ?)").bind(who.key, id, now + i, poll, i + 1)),
+    env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k=?").bind(pollVerKey(poll)),
   ]);
   return json({ ok: true, mine: ids });
 }
 // 結果（投票した人と管理者だけ）
 async function kaoResult({ request, env, who }) {
-  await ensureKao(env);
-  const mine = await kaoMine(env, who);
-  if (!mine.length && !(await isPreviewer(request, env))) return json({ needVote: true, error: "投票すると結果が見られます。" }, 403);
   const url = new URL(request.url);
-  const ver = (await env.DB.prepare("SELECT v FROM meta WHERE k='kao_ver'").first())?.v ?? 0;
+  const poll = pollOf(url.searchParams.get("p"));
+  await ensureKao(env);
+  const mine = await kaoMine(env, who, poll);
+  if (!mine.length && !(await isPreviewer(request, env))) return json({ needVote: true, error: "投票すると結果が見られます。" }, 403);
+  const ver = (await env.DB.prepare("SELECT v FROM meta WHERE k=?").bind(pollVerKey(poll)).first())?.v ?? 0;
   if (url.searchParams.get("v") === String(ver)) return json({ same: true });
-  const { results } = await env.DB.prepare("SELECT p.id, p.caption, (SELECT COUNT(*) FROM kao_votes v WHERE v.photo_id=p.id) AS n FROM kao_photos p WHERE p.hidden=0 ORDER BY n DESC, p.sort, p.id").all();
-  const voters = await env.DB.prepare("SELECT COUNT(DISTINCT v.who) AS n FROM kao_votes v JOIN kao_photos p ON p.id=v.photo_id WHERE p.hidden=0").first();
-  return json({ ver, voters: voters?.n || 0, mine, photos: results.map((r) => ({ id: r.id, caption: r.caption || "", n: r.n })) });
+  const { results } = await env.DB.prepare(`SELECT p.id, p.caption,
+      COALESCE((SELECT SUM(${ptsSql(poll)}) FROM kao_votes v WHERE v.photo_id=p.id), 0) AS pt,
+      (SELECT COUNT(*) FROM kao_votes v WHERE v.photo_id=p.id) AS n,
+      (SELECT COUNT(*) FROM kao_votes v WHERE v.photo_id=p.id AND v.rk=1) AS n1,
+      (SELECT COUNT(*) FROM kao_votes v WHERE v.photo_id=p.id AND v.rk=2) AS n2,
+      (SELECT COUNT(*) FROM kao_votes v WHERE v.photo_id=p.id AND v.rk=3) AS n3
+    FROM kao_photos p WHERE p.hidden=0 AND p.poll=? ORDER BY pt DESC, n1 DESC, n2 DESC, p.sort, p.id`).bind(poll).all();
+  const voters = await env.DB.prepare("SELECT COUNT(DISTINCT v.who) AS n FROM kao_votes v JOIN kao_photos p ON p.id=v.photo_id WHERE p.hidden=0 AND v.poll=?").bind(poll).first();
+  return json({ ver, voters: voters?.n || 0, pts: POLLS[poll].pts, mine, photos: results.map((r) => ({ id: r.id, caption: r.caption || "", n: r.n, pt: r.pt, n1: r.n1, n2: r.n2, n3: r.n3 })) });
 }
 async function kaoImage({ request, env }) {
   const url = new URL(request.url);
@@ -835,7 +857,7 @@ const PROJECTS = [
   { id: "kikaku4", title: "23歳のちぃ記録", desc: "23歳のちぃちゃんの1年を振り返ろう🗓️", href: "/kikaku4", page: "kikaku4", open: false, soon: "10/29公開予定", showAfter: "kikaku3" },
   { id: "kikaku5", title: "ちぃちゃんの好きパフォーマンス", desc: "その好きポイント「わかる！」🙌", href: "/kikaku5", page: "kikaku5", open: false, soon: "10/30公開予定", showAfter: "kikaku4" },
   { id: "kikaku6", title: "わたしの選ぶちぃの好き顔", desc: "好きなちぃ顔に投票しよう🗳️", href: "/kikaku6", page: "kikaku6", pages: ["kikaku6-kekka"], open: false, soon: "10/31公開予定", showAfter: "kikaku5" },
-  { id: "kikaku7", title: "（企画⑦・内容は準備中）", desc: "", href: "", open: false, soon: "11/1公開予定", showAfter: "kikaku6" },
+  { id: "kikaku7", title: "ちぃの好きコスプレ", desc: "好きなコスプレを1〜3位で投票しよう👗", href: "/kikaku7", page: "kikaku7", pages: ["kikaku7-kekka"], open: false, soon: "11/1公開予定", showAfter: "kikaku6" },
 ];
 
 let projectsReady = false;
@@ -923,9 +945,10 @@ async function adminPost({ request, env }) {
   switch (body.action) {
     case "kao_list": {
       await ensureKao(env);
-      const { results } = await env.DB.prepare("SELECT p.id, p.caption, p.hidden, p.at, (SELECT COUNT(*) FROM kao_votes v WHERE v.photo_id=p.id) AS n FROM kao_photos p ORDER BY p.sort, p.id").all();
-      const voters = await env.DB.prepare("SELECT COUNT(DISTINCT v.who) AS n FROM kao_votes v JOIN kao_photos p ON p.id=v.photo_id WHERE p.hidden=0").first();
-      return await withPreviewCookie(json({ items: results, voters: voters?.n || 0, max: KAO_MAX }), env);
+      const poll = pollOf(body.poll);
+      const { results } = await env.DB.prepare(`SELECT p.id, p.caption, p.hidden, p.at, (SELECT COUNT(*) FROM kao_votes v WHERE v.photo_id=p.id) AS n, COALESCE((SELECT SUM(${ptsSql(poll)}) FROM kao_votes v WHERE v.photo_id=p.id), 0) AS pt FROM kao_photos p WHERE p.poll=? ORDER BY p.sort, p.id`).bind(poll).all();
+      const voters = await env.DB.prepare("SELECT COUNT(DISTINCT v.who) AS n FROM kao_votes v JOIN kao_photos p ON p.id=v.photo_id WHERE p.hidden=0 AND v.poll=?").bind(poll).first();
+      return await withPreviewCookie(json({ items: results, voters: voters?.n || 0, max: KAO_MAX, pts: POLLS[poll].pts }), env);
     }
     case "kao_add": {
       await ensureKao(env);
@@ -933,12 +956,23 @@ async function adminPost({ request, env }) {
       const ft = full && imgType(full), tt = thumb && imgType(thumb);
       if (!ft || !tt) return json({ error: "写真を読み込めませんでした。" }, 400);
       if (full.length > 1_200_000 || thumb.length > 250_000) return json({ error: "写真が大きすぎます。" }, 400);
-      const cnt = await env.DB.prepare("SELECT COUNT(*) AS n FROM kao_photos").first();
+      const poll = pollOf(body.poll);
+      const cnt = await env.DB.prepare("SELECT COUNT(*) AS n FROM kao_photos WHERE poll=?").bind(poll).first();
       if (cnt && cnt.n >= KAO_MAX) return json({ error: `候補は${KAO_MAX}枚までです。` }, 400);
       const caption = String(body.caption ?? "").replace(/\s+/g, " ").trim().slice(0, 30);
       await env.DB.batch([
-        env.DB.prepare("INSERT INTO kao_photos (caption, at, thumb, thumb_type, full, full_type, sort) VALUES (?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(sort),0)+1 FROM kao_photos))").bind(caption, Date.now(), String(body.thumb), tt, String(body.full), ft),
-        env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='kao_ver'"),
+        env.DB.prepare("INSERT INTO kao_photos (caption, at, thumb, thumb_type, full, full_type, sort, poll) VALUES (?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(sort),0)+1 FROM kao_photos WHERE poll=?), ?)").bind(caption, Date.now(), String(body.thumb), tt, String(body.full), ft, poll, poll),
+        env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k=?").bind(pollVerKey(poll)),
+      ]);
+      return json({ ok: true });
+    }
+    case "kao_reset": {
+      // テストの票などを消す（その投票の票を全部）
+      await ensureKao(env);
+      const poll = pollOf(body.poll);
+      await env.DB.batch([
+        env.DB.prepare("DELETE FROM kao_votes WHERE poll=?").bind(poll),
+        env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k=?").bind(pollVerKey(poll)),
       ]);
       return json({ ok: true });
     }
@@ -949,7 +983,7 @@ async function adminPost({ request, env }) {
       if (!ids.length) return json({ error: "並び順が届きませんでした。" }, 400);
       await env.DB.batch([
         ...ids.map((pid, i) => env.DB.prepare("UPDATE kao_photos SET sort=? WHERE id=?").bind(i + 1, pid)),
-        env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='kao_ver'"),
+        env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k IN ('kao_ver','cos_ver')"),
       ]);
       return json({ ok: true });
     }
@@ -963,7 +997,7 @@ async function adminPost({ request, env }) {
       await ensureKao(env);
       await env.DB.batch([
         env.DB.prepare("UPDATE kao_photos SET hidden=? WHERE id=?").bind(body.action === "kao_hide" ? 1 : 0, id),
-        env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='kao_ver'"),
+        env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k IN ('kao_ver','cos_ver')"),
       ]);
       return json({ ok: true });
     }
@@ -972,7 +1006,7 @@ async function adminPost({ request, env }) {
       await env.DB.batch([
         env.DB.prepare("DELETE FROM kao_votes WHERE photo_id=?").bind(id),
         env.DB.prepare("DELETE FROM kao_photos WHERE id=?").bind(id),
-        env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='kao_ver'"),
+        env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k IN ('kao_ver','cos_ver')"),
       ]);
       return json({ ok: true });
     }
@@ -1047,7 +1081,8 @@ async function adminPost({ request, env }) {
         tiktok: await one("SELECT COUNT(*) AS n FROM tiktok"),
         photos: await one("SELECT COUNT(*) AS n FROM photos"),
         wakaru: await (async () => { await ensureWK(env); return one("SELECT COUNT(*) AS n FROM wk_cards"); })(),
-        kao: await (async () => { await ensureKao(env); return one("SELECT COUNT(DISTINCT who) AS n FROM kao_votes"); })(),
+        kao: await (async () => { await ensureKao(env); return one("SELECT COUNT(DISTINCT who) AS n FROM kao_votes WHERE poll='kao'"); })(),
+        cos: await (async () => { await ensureKao(env); return one("SELECT COUNT(DISTINCT who) AS n FROM kao_votes WHERE poll='cos'"); })(),
         photosPending: await one("SELECT COUNT(*) AS n FROM photos WHERE status='pending'"),
         bans: await (async () => { await ensureBan(env); return one("SELECT COUNT(DISTINCT grp) AS n FROM bans"); })(),
       });

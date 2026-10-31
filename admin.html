@@ -77,6 +77,7 @@ li .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .kgrid img{aspect-ratio:3/4!important}
 .kgrid input[type=text]{flex:none;width:100%;font:inherit;font-size:14px;border:2px solid var(--line,#f1d9e2);border-radius:10px;padding:6px 8px}
 .kgrid .kv{font-weight:700;font-size:14px}
+.krs{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .kmv{display:flex;align-items:center;justify-content:space-between;gap:2px;min-width:0}
 .kmv span{font-size:12px;font-weight:700;color:var(--muted,#8a7480);white-space:nowrap}
 .kmv button{flex:0 1 auto;min-width:0;padding:4px 6px;font-size:12px}
@@ -114,6 +115,7 @@ button,a,label,select,input,textarea,summary,.cal,.tl-scroll,.cloud{touch-action
     <button role="tab" data-tab="photos" aria-selected="false">写真<span class="cnt" id="c-photos"></span><span class="cnt wait" id="c-wait" hidden></span></button>
     <button role="tab" data-tab="wakaru" aria-selected="false">わかる<span class="cnt" id="c-wakaru"></span></button>
     <button role="tab" data-tab="kao" aria-selected="false">好き顔<span class="cnt" id="c-kao"></span></button>
+    <button role="tab" data-tab="cos" aria-selected="false">コスプレ<span class="cnt" id="c-cos"></span></button>
     <button role="tab" data-tab="bans" aria-selected="false">投稿禁止<span class="cnt" id="c-bans"></span></button>
   </div>
   <section id="lettersView" hidden style="display:flex;flex-direction:column;gap:12px">
@@ -127,14 +129,15 @@ button,a,label,select,input,textarea,summary,.cal,.tl-scroll,.cloud{touch-action
   </section>
   <section id="kaoView" hidden style="display:flex;flex-direction:column;gap:12px">
     <p class="msg" id="kmsg"></p>
-    <p class="m">企画⑥「わたしの選ぶちぃの好き顔」の候補の写真です。ここに載せた写真の中から、みんなが3つえらんで投票します。写真の下の欄に、ひとこと（例：ライブ中の笑顔）を付けられます（なくてもOK）。写真の上の ⇤ ◀ ▶ ⇥ で、投票ページに並ぶ順番を変えられます。</p>
+    <p class="m" id="kdesc"></p>
     <div class="filters">
       <label class="kadd"><span>📷 候補の写真を追加（何枚でも）</span><input type="file" id="kfile" accept="image/*" multiple></label>
       <button class="sub" id="kreload" type="button">更新</button>
-      <a class="pv" href="/kikaku6" target="_blank" rel="noopener">投票ページを見る</a>
-      <a class="pv" href="/kikaku6-kekka" target="_blank" rel="noopener">結果ページを見る</a>
-      <a class="pv" href="/kikaku6-kekka?sukusho" target="_blank" rel="noopener">📸 スクショ用の結果ページ（自分の票の印なし）</a>
+      <a class="pv" id="kl1" target="_blank" rel="noopener">投票ページを見る</a>
+      <a class="pv" id="kl2" target="_blank" rel="noopener">結果ページを見る</a>
+      <a class="pv" id="kl3" target="_blank" rel="noopener">📸 スクショ用の結果ページ（自分の票の印なし）</a>
     </div>
+    <div class="krs"><button type="button" class="del" id="kreset">票を全部リセット</button><span class="m">テストで入れた票などを消すときに。写真は消えません。</span></div>
     <ul class="phgrid kgrid" id="klist"></ul>
   </section>
   <section id="bansView" hidden style="display:flex;flex-direction:column;gap:12px">
@@ -313,7 +316,7 @@ $("tabs").addEventListener("click",e=>{
   const b=e.target.closest("[data-tab]"); if(!b) return;
   for(const x of $("tabs").querySelectorAll("[data-tab]")) x.setAttribute("aria-selected",x===b);
   const tab=b.dataset.tab;
-  $("lettersView").hidden=tab!=="letters"; $("projectsView").hidden=tab!=="projects"; $("tiktokView").hidden=tab!=="tiktok"; $("photosView").hidden=tab!=="photos"; $("wakaruView").hidden=tab!=="wakaru"; $("bansView").hidden=tab!=="bans"; $("kaoView").hidden=tab!=="kao";
+  $("lettersView").hidden=tab!=="letters"; $("projectsView").hidden=tab!=="projects"; $("tiktokView").hidden=tab!=="tiktok"; $("photosView").hidden=tab!=="photos"; $("wakaruView").hidden=tab!=="wakaru"; $("bansView").hidden=tab!=="bans"; $("kaoView").hidden=tab!=="kao"&&tab!=="cos";
   $("postsView").hidden=tab!=="posts";
   if(tab==="letters") loadLetters();
   if(tab==="projects") loadProjects();
@@ -322,7 +325,7 @@ $("tabs").addEventListener("click",e=>{
   if(tab==="photos") loadPhotos();
   if(tab==="wakaru") loadWK();
   if(tab==="bans") loadBans();
-  if(tab==="kao") loadKao();
+  if(tab==="kao"||tab==="cos"){ kaoPoll=tab; kaoSetup(); loadKao(); }
   loadCounts();
 });
 const NUM="①②③④⑤⑥⑦⑧⑨⑩";
@@ -521,14 +524,31 @@ async function loadCounts(){
     const c=await call("counts");
     $("c-projects").textContent=`${c.projects}/${c.projectsTotal}`;
     $("c-posts").textContent=c.posts; $("c-letters").textContent=c.letters;
-    $("c-tiktok").textContent=c.tiktok; $("c-photos").textContent=c.photos; $("c-wakaru").textContent=c.wakaru??""; $("c-bans").textContent=c.bans||""; $("c-kao").textContent=c.kao??"";
+    $("c-tiktok").textContent=c.tiktok; $("c-photos").textContent=c.photos; $("c-wakaru").textContent=c.wakaru??""; $("c-bans").textContent=c.bans||""; $("c-kao").textContent=c.kao??""; $("c-cos").textContent=c.cos??"";
     $("c-wait").hidden=!c.photosPending; $("c-wait").textContent=c.photosPending?`待ち${c.photosPending}`:"";
   }catch(e){}
 }
 // ===== 企画⑥ 好き顔の候補 =====
-let kaoItems=[], kaoVoters=0, pendingK=null;
+let kaoItems=[], kaoVoters=0, pendingK=null, kaoPoll="kao", kaoPts=[1,1,1];
+// 好き顔（企画⑥）とコスプレ（企画⑦）は同じ画面を使い回す
+const KAO_INFO={
+  kao:{page:"kikaku6",desc:"企画⑥「わたしの選ぶちぃの好き顔」の候補の写真です。ここに載せた写真の中から、みんなが3つえらんで投票します（どれも1票ずつ）。"},
+  cos:{page:"kikaku7",desc:"企画⑦「ちぃの好きコスプレ」の候補の写真です。みんなが好きな順に3つえらんで投票します（1位3点・2位2点・3位1点）。"},
+};
+function kaoSetup(){
+  const I=KAO_INFO[kaoPoll];
+  $("kdesc").textContent=I.desc+"写真の下の欄に、ひとこと（例：サンタ衣装）を付けられます（なくてもOK）。写真の上の ⇤ ◀ ▶ ⇥ で、投票ページに並ぶ順番を変えられます。";
+  $("kl1").href="/"+I.page; $("kl2").href="/"+I.page+"-kekka"; $("kl3").href="/"+I.page+"-kekka?sukusho";
+  kaoItems=[]; $("klist").replaceChildren(); $("kmsg").textContent="読み込み中…"; resetArm=false; $("kreset").textContent="票を全部リセット";
+}
+let resetArm=false;
+$("kreset").addEventListener("click",async()=>{
+  if(!resetArm){ resetArm=true; $("kreset").textContent=`本当に${kaoPoll==="cos"?"コスプレ":"好き顔"}の票を全部消す`; return; }
+  resetArm=false; $("kreset").textContent="票を全部リセット";
+  try{ await call("kao_reset",null,{poll:kaoPoll}); await loadKao(); loadCounts(); $("kmsg").textContent="票を全部消しました。"; }catch(e){ $("kmsg").textContent=e.message; }
+});
 async function loadKao(){
-  try{ const d=await call("kao_list"); kaoItems=d.items; kaoVoters=d.voters; drawKao(); }catch(e){ $("kmsg").textContent=e.message; }
+  try{ const d=await call("kao_list",null,{poll:kaoPoll}); kaoItems=d.items; kaoVoters=d.voters; kaoPts=d.pts||[1,1,1]; drawKao(); }catch(e){ $("kmsg").textContent=e.message; }
 }
 function drawKao(){
   const shown=kaoItems.filter(x=>!x.hidden).length;
@@ -537,7 +557,7 @@ function drawKao(){
     const li=document.createElement("li"); if(x.hidden) li.className="hid";
     const a=document.createElement("a"); a.href=`/api/kao/img?id=${x.id}&s=full`; a.target="_blank"; a.rel="noopener";
     const im=document.createElement("img"); im.src=`/api/kao/img?id=${x.id}`; im.alt=""; im.loading="lazy"; a.append(im);
-    const v=document.createElement("span"); v.className="kv"; v.textContent=`🗳️ ${x.n}票`+(x.hidden?"（かくし中）":"");
+    const v=document.createElement("span"); v.className="kv"; v.textContent=(kaoPts[0]>1?`🏆 ${x.pt}点（${x.n}票）`:`🗳️ ${x.n}票`)+(x.hidden?"（かくし中）":"");
     const cap=document.createElement("input"); cap.type="text"; cap.maxLength=30; cap.placeholder="ひとこと（任意）"; cap.value=x.caption||"";
     cap.onchange=async()=>{ try{ await call("kao_caption",x.id,{caption:cap.value}); $("kmsg").textContent="ひとことを保存しました。"; x.caption=cap.value; }catch(e){ $("kmsg").textContent=e.message; } };
     const pb=document.createElement("div"); pb.className="pb";
@@ -560,7 +580,7 @@ async function kaoMove(from,to){
   const [it]=kaoItems.splice(from,1); kaoItems.splice(to,0,it); drawKao();
   // 続けて押しても、最後の並びだけ保存する
   clearTimeout(kaoSaving);
-  kaoSaving=setTimeout(async()=>{ try{ await call("kao_order",null,{ids:kaoItems.map(x=>x.id)}); $("kmsg").textContent="並び順を保存しました。投票ページはこの順番で並びます。"; }catch(e){ $("kmsg").textContent=e.message; } },400);
+  kaoSaving=setTimeout(async()=>{ try{ await call("kao_order",null,{poll:kaoPoll,ids:kaoItems.map(x=>x.id)}); $("kmsg").textContent="並び順を保存しました。投票ページはこの順番で並びます。"; }catch(e){ $("kmsg").textContent=e.message; } },400);
 }
 // 写真を小さくしてから載せる（大きい写真：長い辺1280px、一覧用：長い辺480px）
 async function kaoBitmap(file){
@@ -583,7 +603,7 @@ $("kfile").addEventListener("change",async()=>{
       const bm=await kaoBitmap(files[i]);
       const full=kaoShrink(bm,1280,0.85), thumb=kaoShrink(bm,480,0.8);
       if(bm.close) bm.close();
-      await call("kao_add",null,{full,thumb}); ok++;
+      await call("kao_add",null,{poll:kaoPoll,full,thumb}); ok++;
     }catch(e){ ng++; }
   }
   await loadKao(); loadCounts();

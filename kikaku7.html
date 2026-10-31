@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ちぃの好きコスプレ</title>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ちぃむみーてぃんぐ2026">
+<meta property="og:title" content="ちぃの好きコスプレ｜ちぃむみーてぃんぐ2026">
+<meta property="og:description" content="ちぃむみーてぃんぐ2026 企画⑦ 好きなコスプレを1〜3位で投票しよう👗">
+<meta property="og:image" content="/ogp-kikaku7.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="/ogp-kikaku7.png">
+<meta name="description" content="ちぃちゃん生誕企画「ちぃむみーてぃんぐ2026」企画⑦ ちぃの好きコスプレ">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
+<style>
+:root{
+  --bg:#fff7f9; --surface:#ffffff; --fg:#3b2a33; --muted:#8a7480; --line:#f1d9e2;
+  --accent:#e8517f; --accent-ink:#ffffff;
+  --w1:#e8517f; --w2:#f08a3c; --w3:#3aa58a; --w4:#5b7fe0; --w5:#a35fd1;
+  --t1:#fde7ef; --t2:#ffeede; --t3:#e3f5ee; --t4:#e6ecfd; --t5:#f1e6fb;
+  --display:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",system-ui,sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1f1519; --surface:#2a1d23; --fg:#f6e9ee; --muted:#b59aa6; --line:#43303a;
+  --accent:#ff7aa2; --accent-ink:#2a0f19;
+  --w1:#ff7aa2; --w2:#ffab6b; --w3:#5fd1b0; --w4:#8fa9ff; --w5:#cf96f5;
+  --t1:#3a2430; --t2:#3a2c22; --t3:#20332c; --t4:#232a3d; --t5:#2f2439; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1f1519; --surface:#2a1d23; --fg:#f6e9ee; --muted:#b59aa6; --line:#43303a;
+  --accent:#ff7aa2; --accent-ink:#2a0f19;
+  --w1:#ff7aa2; --w2:#ffab6b; --w3:#5fd1b0; --w4:#8fa9ff; --w5:#cf96f5;
+  --t1:#3a2430; --t2:#3a2c22; --t3:#20332c; --t4:#232a3d; --t5:#2f2439; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.back{font-family:var(--display);font-weight:800;font-size:14px;color:var(--accent);text-decoration:none;align-self:flex-start}
+.back:hover,.back:focus-visible{text-decoration:underline}
+header{display:flex;flex-direction:column;gap:6px}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(26px,6.5vw,36px);line-height:1.25;margin:0;text-wrap:balance}
+h1 span{color:var(--accent)}
+.sub{margin:0;font-family:var(--display);font-weight:800;font-size:16px}
+.lead{margin:0;color:var(--muted);font-size:14px}
+.status{font-size:13px;color:var(--muted);margin:0}
+footer{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
+button,a,input{touch-action:manipulation}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:var(--display);font-weight:800;font-size:16px;border:0;border-radius:999px;padding:11px 22px;background:var(--accent);color:var(--accent-ink);cursor:pointer;text-decoration:none}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.sub2{background:var(--surface);color:var(--accent);border:2px solid var(--accent)}
+.viewer{position:fixed;inset:0;z-index:50;background:rgba(20,10,15,.86);display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px))}
+.viewer figure{margin:0;max-width:min(560px,100%);display:flex;flex-direction:column;gap:12px;align-items:center}
+.viewer img{max-width:100%;max-height:68vh;border-radius:16px;background:#000}
+.viewer figcaption{color:#fff;text-align:center;font-size:15px}
+.viewer .close{position:absolute;top:max(12px,env(safe-area-inset-top,0px));right:12px;font:inherit;font-weight:700;background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:999px;padding:8px 14px;cursor:pointer}
+
+/* 写真の一覧 */
+.grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+.ph{position:relative;display:block;width:100%;aspect-ratio:3/4;padding:0;border:3px solid transparent;border-radius:18px;overflow:hidden;background:var(--line);cursor:pointer;transition:transform .15s ease,border-color .15s}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph .cap{position:absolute;left:0;right:0;bottom:0;padding:16px 8px 6px;font-size:11px;font-weight:700;color:#fff;text-align:left;background:linear-gradient(transparent,rgba(0,0,0,.55));line-height:1.35}
+.ph.sel{border-color:var(--accent);transform:scale(.96)}
+.ph.sel::after{content:"";position:absolute;inset:0;background:rgba(232,81,127,.12);pointer-events:none}
+.ph .no{position:absolute;top:6px;left:6px;min-width:30px;height:30px;padding:0 8px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-family:var(--display);font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.ph .zoom{position:absolute;top:6px;right:6px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;border:0;cursor:pointer}
+.ph.mine:not(.sel)::before{content:"前回えらんだ";position:absolute;top:8px;left:8px;font-size:10px;font-weight:700;background:rgba(255,255,255,.9);color:var(--accent);border-radius:999px;padding:1px 7px;z-index:1}
+/* 下に出る投票バー */
+.bar{position:sticky;bottom:max(10px,env(safe-area-inset-bottom,0px));z-index:10;background:var(--surface);border:2px solid var(--line);border-radius:22px;box-shadow:0 10px 30px rgba(80,30,50,.16);padding:10px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.picks{display:flex;gap:6px}
+.picks span{width:40px;height:40px;border-radius:10px;border:2px dashed var(--line);background:var(--bg);overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;color:var(--muted);font-size:14px}
+.picks span img{width:100%;height:100%;object-fit:cover}
+.picks span.on{border:2px solid var(--accent)}
+.barmsg{flex:1 1 120px;font-size:13px;font-weight:700;line-height:1.5}
+.barmsg small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.done{display:flex;flex-direction:column;gap:10px;align-items:flex-start;background:var(--surface);border:2px solid var(--line);border-radius:22px;padding:16px}
+.done p{margin:0}
+.done b{font-family:var(--display);font-size:17px}
+.toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);z-index:40;background:var(--fg);color:var(--bg);font-size:13px;font-weight:700;border-radius:999px;padding:8px 16px;white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">← ちぃむみーてぃんぐ2026 トップへ</a>
+  <header>
+    <h1><span>ちぃ</span>の好きコスプレ</h1>
+    <p class="sub">好きなコスプレを1〜3位で投票しよう👗</p>
+    <p class="lead">いちばん好きなコスプレから順に、3つタップしてね。1番目にえらんだのが<b>1位（3点）</b>、2番目が<b>2位（2点）</b>、3番目が<b>3位（1点）</b>になります。投票すると、みんなの結果が見られるようになります。あとから選び直すこともできます（前の票と入れ替わります）。</p>
+  </header>
+  <div class="done" id="done" hidden>
+    <p><b id="doneT">投票しました！ありがとう💗</b></p>
+    <p class="status" id="doneS">みんなが選んだコスプレランキングを見てみよう。</p>
+    <a class="btn" href="/kikaku7-kekka">結果を見る →</a>
+  </div>
+  <p class="status" id="status">読み込み中…</p>
+  <ul class="grid" id="grid" aria-label="コスプレの候補"></ul>
+  <div class="bar" id="bar" hidden>
+    <div class="picks" id="picks"><span>1位</span><span>2位</span><span>3位</span></div>
+    <p class="barmsg" id="barmsg">あと3つえらんでね</p>
+    <button class="btn" type="button" id="go" disabled>投票する</button>
+  </div>
+  <footer>※ファンによる非公式サイトです</footer>
+</div>
+<div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-label="写真を大きく見る">
+  <button class="close" type="button" id="vclose">閉じる ✕</button>
+  <figure><img id="vimg" alt=""><figcaption id="vcap"></figcaption><button class="btn" type="button" id="vpick">これをえらぶ</button></figure>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const PICK=3;
+let photos=[], sel=[], mine=[], viewing=null, sending=false;
+const img=(id,s)=>`/api/kao/img?id=${id}${s?"&s="+s:""}`;
+function toast(t){ const d=document.createElement("div"); d.className="toast"; d.textContent=t; document.body.append(d); setTimeout(()=>d.remove(),2200); }
+function same(a,b){ return a.join()===b.join(); }   // 順番も同じなら同じ投票
+function render(){
+  $("grid").replaceChildren(...photos.map(p=>{
+    const li=document.createElement("li");
+    const b=document.createElement("button"); b.type="button";
+    const k=sel.indexOf(p.id);
+    b.className="ph"+(k>=0?" sel":"")+(mine.includes(p.id)?" mine":"");
+    b.setAttribute("aria-pressed",k>=0); b.setAttribute("aria-label",(p.caption||"写真")+(k>=0?`（${k+1}つ目にえらんでいます）`:""));
+    const im=document.createElement("img"); im.src=img(p.id); im.alt=""; im.loading="lazy"; b.append(im);
+    if(p.caption){ const c=document.createElement("span"); c.className="cap"; c.textContent=p.caption; b.append(c); }
+    if(k>=0){ const n=document.createElement("span"); n.className="no"; n.textContent=`${k+1}位`; b.append(n); }
+    const z=document.createElement("span"); z.className="zoom"; z.textContent="⤢"; z.setAttribute("role","button"); z.setAttribute("aria-label","大きく見る");
+    z.onclick=e=>{ e.stopPropagation(); openViewer(p); };
+    b.append(z);
+    b.onclick=()=>toggle(p.id);
+    li.append(b); return li;
+  }));
+  drawBar();
+}
+function toggle(id){
+  const k=sel.indexOf(id);
+  if(k>=0) sel.splice(k,1);
+  else if(sel.length>=PICK){ toast("3位まで選んだよ。外したい写真をもう一度タップしてね"); return; }
+  else sel.push(id);
+  render();
+}
+function drawBar(){
+  $("bar").hidden=!photos.length;
+  const sp=$("picks").children;
+  for(let i=0;i<PICK;i++){
+    const s=sp[i], id=sel[i];
+    s.className=id?"on":""; s.replaceChildren(id? Object.assign(document.createElement("img"),{src:img(id),alt:""}) : document.createTextNode(`${i+1}位`));
+  }
+  const left=PICK-sel.length, voted=mine.length>0;
+  const PT=["3点","2点","1点"];
+  if(left>0){ $("barmsg").innerHTML=`次は<b>${sel.length+1}位（${PT[sel.length]}）</b>をえらんでね`+(voted?"<small>投票ずみ。選び直すと前の票と入れ替わります</small>":""); $("go").disabled=true; $("go").textContent="投票する"; }
+  else if(voted&&same(sel,mine)){ $("barmsg").innerHTML="この順位で投票ずみです✅<small>選び直すと、前の票と入れ替わります</small>"; $("go").disabled=true; $("go").textContent="投票ずみ"; }
+  else { $("barmsg").innerHTML="この順位でOK？<small>順位を変えたいときは、写真をタップして外してから選び直してね</small>"; $("go").disabled=false; $("go").textContent=voted?"この順位で選び直す":"この順位で投票する"; }
+}
+$("go").addEventListener("click",async()=>{
+  if(sending||sel.length!==PICK) return;
+  sending=true; $("go").disabled=true;
+  try{
+    const r=await fetch("/api/kao/vote",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({poll:"cos",ids:sel})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){ toast(d.error||"投票できませんでした。少し待ってからもう一度どうぞ。"); return; }
+    const again=mine.length>0; mine=d.mine||sel.slice();
+    $("done").hidden=false; $("doneT").textContent=again?"選び直しました！":"投票しました！ありがとう💗";
+    $("done").scrollIntoView({behavior:"smooth",block:"center"});
+  }catch(e){ toast("送れませんでした。通信を確認してもう一度どうぞ。"); }
+  finally{ sending=false; render(); }
+});
+function openViewer(p){
+  viewing=p; $("vimg").src=img(p.id,"full"); $("vcap").textContent=p.caption||"";
+  $("vpick").textContent=sel.includes(p.id)?"えらぶのをやめる":"これをえらぶ"; $("viewer").hidden=false;
+}
+function closeViewer(){ $("viewer").hidden=true; viewing=null; }
+$("vclose").onclick=closeViewer;
+$("viewer").addEventListener("click",e=>{ if(e.target===$("viewer")) closeViewer(); });
+$("vpick").onclick=()=>{ if(viewing){ const id=viewing.id; closeViewer(); toggle(id); } };
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&!$("viewer").hidden) closeViewer(); });
+async function load(){
+  try{
+    const r=await fetch("/api/kao?p=cos",{cache:"no-store"}); if(!r.ok) throw 0;
+    const d=await r.json();
+    photos=d.photos||[]; mine=d.mine||[]; sel=mine.slice();
+    $("status").textContent=photos.length?`${photos.length}枚の写真から、好きなコスプレを1位から順に3つえらんでね`:"候補の写真をじゅんび中です。もう少し待ってね";
+    if(mine.length){ $("done").hidden=false; $("doneT").textContent="投票ずみです💗"; $("doneS").textContent="結果はいつでも見られます。選び直すこともできます。"; }
+    render();
+  }catch(e){ $("status").textContent="読み込めませんでした。ページを読み直してね。"; }
+}
+load();
+</script>
+</body>
+</html>
