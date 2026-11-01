@@ -92,7 +92,7 @@ li.new{animation:pop .5s ease}
 .count-box{position:relative;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;background:var(--bg);border-radius:20px;padding:12px 16px;margin-top:6px;font-family:var(--display);font-weight:800}
 .count-box .n{font-size:44px;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
 .count-box .u{font-size:16px}
-.count-box.after .n{font-size:clamp(26px,7vw,36px)}
+.count-box.after .n{font-size:clamp(24px,6.6vw,34px);line-height:1.35}
 .count-box .sub{font-family:var(--body);font-weight:400;font-size:13px;color:var(--muted);flex-basis:100%}
 .menu{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:10px}
 .menu a,.menu .soon{display:flex;flex-direction:column;gap:2px;text-decoration:none;color:var(--fg);background:var(--surface);border:2px solid var(--line);border-radius:20px;padding:14px 16px;min-width:0}
@@ -187,7 +187,7 @@ function drawCountdown(){
   if(days===0){ box.innerHTML='<span class="n">HAPPY BIRTHDAY</span><span class="sub">ちぃちゃん、お誕生日おめでとう！</span>'; return; }
   if(days<0){
     // お誕生日が終わったあと：お礼と、24歳の1年への応援
-    box.innerHTML='<span class="n">24歳もよろしくね💗</span><span class="sub">ちぃちゃん、24歳のお誕生日おめでとう！<br>生誕企画に参加してくれたみなさん、ありがとうございました🎉</span>';
+    box.innerHTML='<span class="n">24歳も素敵な1年に<br>なりますように！</span><span class="sub">ちぃちゃん、24歳のお誕生日おめでとう！<br>生誕企画に参加してくれたみなさん、ありがとうございました🎉</span>';
     return;
   }
   box.innerHTML=`<span class="u">お誕生日まで あと</span><span class="n">${days}</span><span class="u">日</span>`;
