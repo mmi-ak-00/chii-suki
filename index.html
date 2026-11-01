@@ -301,10 +301,7 @@ loadProjects(); drawCountdown(); setInterval(drawCountdown, 60e3);
     const m=p.querySelector(".mouth").getBoundingClientRect(), x=m.left, y=m.top;
     burst(x,y,side==="l"?-58:-122,reduce?50:120,46);   // クラッカーの口が向いている方へ
     const f=document.createElement("div"); f.className="flash"; f.style.left=x+"px"; f.style.top=y+"px"; document.body.append(f); setTimeout(()=>f.remove(),600);
-    const t=document.createElement("div"); t.className="pan"; t.textContent="パーン！";
-    t.style.left=(side==="l"?W*0.27:W*0.73)+"px"; t.style.top=Math.max(60,y-(side==="l"?150:90))+"px";
-    t.style.setProperty("--rt",side==="l"?"-12deg":"12deg");
-    document.body.append(t); setTimeout(()=>t.remove(),1100);
+    // 文字は出さない（紙吹雪と光だけ）
   }
 
   // ② 白い幕を、真ん中からまるく溶かしていく（キラキラの下からページが見えてくる）
