@@ -15,7 +15,7 @@
 <meta name="twitter:image" content="/ogp.png">
 <meta name="description" content="ちぃちゃん生誕企画「ちぃむみーてぃんぐ2026」">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&family=Zen+Kaku+Gothic+New:wght@400;700&family=Great+Vibes&display=swap">
 <style>
 /* Layout: 上に投稿フォーム、中央にワードクラウド、下に新着投稿の吹き出しリスト */
 :root{
@@ -284,7 +284,15 @@ loadProjects(); drawCountdown(); setInterval(drawCountdown, 60e3);
 .pan{position:fixed;z-index:103;pointer-events:none;font-family:var(--display);font-weight:800;font-size:clamp(22px,6.5vw,36px);color:var(--accent);text-shadow:0 2px 0 #fff,0 0 12px #fff;white-space:nowrap;animation:pan 1s cubic-bezier(.2,1.6,.4,1) both}
 @keyframes pan{0%{transform:translate(-50%,-50%) scale(.2) rotate(var(--rt));opacity:0}30%{transform:translate(-50%,-50%) scale(1.15) rotate(var(--rt));opacity:1}70%{opacity:1}100%{transform:translate(-50%,-80%) scale(1) rotate(var(--rt));opacity:0}}
 .flash{position:fixed;z-index:101;pointer-events:none;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;background:radial-gradient(circle,#fff 0,#fff6 35%,#ffd54a33 60%,transparent 70%);animation:flash .5s ease-out both}
-@keyframes flash{from{transform:scale(.2);opacity:1}to{transform:scale(2.4);opacity:0}}`;
+@keyframes flash{from{transform:scale(.2);opacity:1}to{transform:scale(2.4);opacity:0}}
+.hbtxt::before{content:"";position:absolute;left:50%;top:50%;width:150%;height:190%;transform:translate(-50%,-50%);z-index:-1;background:radial-gradient(ellipse at center,rgba(255,255,255,.92) 0%,rgba(255,250,240,.75) 40%,rgba(255,255,255,0) 70%)}
+.hbtxt{position:fixed;left:50%;top:46%;z-index:103;pointer-events:none;text-align:center;white-space:nowrap;transform:translate(-50%,-50%);animation:hbin 3.4s ease both}
+.hbtxt b{display:block;font-family:"Great Vibes","Snell Roundhand","Apple Chancery",cursive;font-weight:400;font-size:clamp(44px,13.5vw,84px);line-height:1.15;padding:0 .2em;
+  background:linear-gradient(100deg,#b8862f 0%,#e9c46a 30%,#fff6d8 45%,#e9c46a 60%,#c08a2e 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 2px 0 rgba(255,255,255,.95)) drop-shadow(0 0 14px rgba(255,255,255,.9)) drop-shadow(0 3px 10px rgba(160,110,30,.25));animation:hbshine 2.4s ease .3s both}
+.hbtxt span{display:block;margin-top:2px;font-family:var(--display);font-weight:800;font-size:clamp(12px,3.4vw,15px);letter-spacing:.32em;color:#c99a3c;text-shadow:0 0 8px #fff,0 0 2px #fff}
+@keyframes hbin{0%{opacity:0;transform:translate(-50%,-40%) scale(.92);filter:blur(6px)}18%{opacity:1;transform:translate(-50%,-50%) scale(1);filter:blur(0)}78%{opacity:1}100%{opacity:0;transform:translate(-50%,-56%) scale(1.02);filter:blur(2px)}}
+@keyframes hbshine{from{background-position:100% 0}to{background-position:0 0}}`;
   document.head.append(st);
 
   const CONE='<svg viewBox="0 0 84 110" aria-hidden="true"><defs><clipPath id="cc"><path d="M10 10 L74 10 L48 104 L36 104 Z"/></clipPath></defs>'
@@ -297,11 +305,17 @@ loadProjects(); drawCountdown(); setInterval(drawCountdown, 60e3);
     d.innerHTML=CONE+'<span class="mouth"></span>';
     document.body.append(d); return d;
   }
+  // パーンに合わせて、金色の筆記体で「Happy Birthday」
+  function hb(){
+    const d=document.createElement("div"); d.className="hbtxt";
+    d.innerHTML='<b>Happy Birthday</b><span>CHII ・ 2026.11.02</span>';
+    document.body.append(d); setTimeout(()=>d.remove(),3600);
+  }
   function bang(p,side){
     const m=p.querySelector(".mouth").getBoundingClientRect(), x=m.left, y=m.top;
     burst(x,y,side==="l"?-58:-122,reduce?50:120,46);   // クラッカーの口が向いている方へ
     const f=document.createElement("div"); f.className="flash"; f.style.left=x+"px"; f.style.top=y+"px"; document.body.append(f); setTimeout(()=>f.remove(),600);
-    // 文字は出さない（紙吹雪と光だけ）
+    // 文字は真ん中に1回だけ（hb()で出す）
   }
 
   // ② 白い幕を、真ん中からまるく溶かしていく（キラキラの下からページが見えてくる）
@@ -339,14 +353,14 @@ loadProjects(); drawCountdown(); setInterval(drawCountdown, 60e3);
   }
   function go(){
     requestAnimationFrame(frame);
-    if(reduce){ setTimeout(()=>{ burst(0,H,-60,40,40); burst(W,H,-120,40,40); $("countdown").classList.add("bdpop"); },BANG_AT); return; }
+    if(reduce){ setTimeout(()=>{ burst(0,H,-60,40,40); burst(W,H,-120,40,40); hb(); $("countdown").classList.add("bdpop"); },BANG_AT); return; }
     const L=makePopper("l"), R=makePopper("r");
     // ③ ページが見えてきたら、両サイドからクラッカーが出てくる
     setTimeout(()=>{ L.classList.add("in"); R.classList.add("in"); },BANG_AT-900);
     setTimeout(()=>{ L.classList.add("ready"); R.classList.add("ready"); },BANG_AT-280);   // ぐっとためて
     setTimeout(()=>{                                                                         // ④ パーン！
       L.classList.remove("ready"); R.classList.remove("ready"); L.classList.add("kick"); R.classList.add("kick");
-      bang(L,"l"); bang(R,"r");
+      bang(L,"l"); bang(R,"r"); hb();
       const box=$("countdown"); box.classList.remove("bdpop"); void box.offsetWidth; box.classList.add("bdpop");
     },BANG_AT);
     setTimeout(()=>{ L.classList.remove("kick"); R.classList.remove("kick"); },BANG_AT+200);
