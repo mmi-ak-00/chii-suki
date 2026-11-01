@@ -206,7 +206,7 @@ function drawCountdown(){
 })();
 loadProjects(); drawCountdown(); setInterval(drawCountdown, 60e3);
 
-// ===== 11/2限定：ページを開いたとき、左右からクラッカーで「パーン！」 =====
+// ===== 11/2限定：トップページを開いたとき、画面がキラキラ〜っと光って紙吹雪がふわっと舞う =====
 // URLに ?pan を付けると、当日でなくても試せる
 (function(){
   const now=new Date(Date.now()+9*3600e3);
@@ -220,94 +220,57 @@ loadProjects(); drawCountdown(); setInterval(drawCountdown, 60e3);
   let W=0,H=0; const size=()=>{ W=innerWidth; H=innerHeight; cv.width=W*dpr; cv.height=H*dpr; g.setTransform(dpr,0,0,dpr,0,0); };
   size(); addEventListener("resize",size);
   const css=getComputedStyle(document.documentElement);
-  const COLS=["--w1","--w2","--w3","--w4","--w5"].map(v=>css.getPropertyValue(v).trim()||"#e8517f").concat(["#ffd54a","#ffffff"]);
-  const P=[];
-  // 左下・右下の2か所から、斜め上に向けて紙吹雪を打ち上げる
-  // x,y：飛び出す場所／deg：飛ぶ向き（真上が-90）／spread：広がり
-  function burst(x,y,deg,n,spread){
-    for(let i=0;i<n;i++){
-      const ang=(deg+(Math.random()-.5)*(spread||40))*Math.PI/180, sp=(Math.sqrt(H/844)*(reduce?24:30))+Math.random()*12;   // 画面のいちばん上まで届く強さ
-      P.push({x,y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,c:COLS[i%COLS.length],w:6+Math.random()*6,h:8+Math.random()*8,
-        r:Math.random()*6.28,vr:(Math.random()-.5)*.3,shape:Math.random()<.25?"o":"r",sw:Math.random()*6.28});
-    }
+  const COLS=["--w1","--w2","--w3","--w4","--w5"].map(v=>css.getPropertyValue(v).trim()||"#e8517f").concat(["#ffd54a"]);
+  const GLOW=["#ffcf3a","#ff8fb3","#ffe066","#c9a2ff","#ffb347","#ff6fa0"];
+  const S=[], C=[];
+  // キラキラ（4つの角がある星）を、時間をずらして画面のあちこちに出す
+  const NS=reduce?28:90;
+  for(let i=0;i<NS;i++) S.push({x:Math.random(),y:Math.random()*0.95,t:Math.random()*2400,life:700+Math.random()*700,r:10+Math.random()*(i%5===0?26:14),c:GLOW[i%GLOW.length],rot:Math.random()*0.6});
+  // 紙吹雪：画面の上から、ひらひら落ちてくる
+  const NC=reduce?30:90;
+  for(let i=0;i<NC;i++) C.push({x:Math.random(),y:-0.05-Math.random()*0.6,vy:0.9+Math.random()*1.4,c:COLS[i%COLS.length],w:5+Math.random()*5,h:7+Math.random()*7,r:Math.random()*6.28,vr:(Math.random()-.5)*.08,sw:Math.random()*6.28,amp:0.6+Math.random()*1.2,o:Math.random()<.25});
+  function star(x,y,r,a,c,rot){
+    g.save(); g.translate(x,y); g.rotate(rot); g.globalAlpha=a;
+    const grd=g.createRadialGradient(0,0,0,0,0,r*1.6); grd.addColorStop(0,c); grd.addColorStop(.4,c); grd.addColorStop(1,"rgba(255,255,255,0)");
+    g.fillStyle=grd; g.beginPath(); g.arc(0,0,r*1.6,0,6.28); g.globalAlpha=a*.28; g.fill();
+    g.globalAlpha=a; g.fillStyle=c; g.beginPath();
+    const k=r*0.22; g.moveTo(0,-r); g.quadraticCurveTo(k,-k,r,0); g.quadraticCurveTo(k,k,0,r); g.quadraticCurveTo(-k,k,-r,0); g.quadraticCurveTo(-k,-k,0,-r); g.fill();
+    g.fillStyle="#fff"; g.beginPath(); g.arc(0,0,r*0.18,0,6.28); g.fill();
+    g.restore();
   }
-  // カウントダウンの「HAPPY BIRTHDAY」を、パーンに合わせてぽんっと弾ませる
+  // 画面全体を、ふわっと光の帯が通りすぎる
+  const sweep=document.createElement("div");
+  sweep.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:99;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.75) 45%,rgba(255,236,170,.55) 50%,rgba(255,255,255,.75) 55%,transparent 70%);background-size:300% 100%;background-position:120% 0;opacity:0";
+  document.body.append(sweep);
   const st=document.createElement("style");
-  st.textContent="@keyframes bdpop{0%{transform:scale(.6);opacity:0}55%{transform:scale(1.08);opacity:1}75%{transform:scale(.97)}100%{transform:none}} .count-box.bdpop{animation:bdpop .8s cubic-bezier(.2,1.4,.4,1) both}";
+  st.textContent="@keyframes bdpop{0%{transform:scale(.85);filter:brightness(1.3)}50%{transform:scale(1.05)}100%{transform:none;filter:none}} .count-box.bdpop{animation:bdpop .9s cubic-bezier(.2,1.4,.4,1) both} @keyframes kirasweep{0%{background-position:120% 0;opacity:0}15%{opacity:1}100%{background-position:-20% 0;opacity:0}}";
   document.head.append(st);
-  let t0=0, raf=0;
+  let t0=0;
   function frame(t){
     if(!t0) t0=t;
-    const el=t-t0;
+    const el=t-t0, end=reduce?3500:5200, fade=Math.max(0,Math.min(1,(end-el)/900));
     g.clearRect(0,0,W,H);
-    for(const p of P){
-      p.vy+=0.32; p.vx*=0.975; p.vy*=0.975; if(p.vy>2.6) p.vy=2.6; p.x+=Math.sin(p.sw)*0.6; p.x+=p.vx; p.y+=p.vy; p.r+=p.vr; p.sw+=0.15;
-      const fade=Math.max(0,Math.min(1,(5600-el)/1000));
-      g.save(); g.globalAlpha=fade; g.translate(p.x,p.y); g.rotate(p.r); g.fillStyle=p.c;
-      if(p.shape==="o"){ g.beginPath(); g.arc(0,0,p.w/2,0,6.28); g.fill(); }
-      else g.fillRect(-p.w/2,-p.h/2*Math.abs(Math.cos(p.sw)),p.w,p.h*Math.abs(Math.cos(p.sw))+1);
+    for(const p of C){
+      p.y+=p.vy/H*1.0*3; p.sw+=0.05; p.r+=p.vr;
+      const x=p.x*W+Math.sin(p.sw)*p.amp*14, y=p.y*H;
+      g.save(); g.globalAlpha=fade; g.translate(x,y); g.rotate(p.r); g.fillStyle=p.c;
+      if(p.o){ g.beginPath(); g.arc(0,0,p.w/2,0,6.28); g.fill(); }
+      else { const s=Math.abs(Math.cos(p.sw*1.6)); g.fillRect(-p.w/2,-p.h/2*s,p.w,p.h*s+1); }
       g.restore();
     }
-    if(el<5700) raf=requestAnimationFrame(frame);
-    else { cv.remove(); }
-  }
-  // ===== 両サイドからクラッカーが出てきて、手がひもを引いて「パーン！」 =====
-  st.textContent+=`
-.popper{position:fixed;bottom:calc(64px + env(safe-area-inset-bottom,0px));z-index:102;pointer-events:none;width:84px;height:200px;transition:transform .45s cubic-bezier(.2,1.3,.4,1)}
-.popper.l{left:40px;transform:translate(-150px,60px) rotate(32deg);transform-origin:50% 40%}
-.popper.r{right:40px;transform:translate(150px,60px) rotate(-32deg) scaleX(-1);transform-origin:50% 40%}
-.popper.l.in{transform:translate(0,0) rotate(32deg)} .popper.r.in{transform:translate(0,0) rotate(-32deg) scaleX(-1)}
-.popper.l.kick{transform:translate(-10px,12px) rotate(36deg)} .popper.r.kick{transform:translate(10px,12px) rotate(-36deg) scaleX(-1)}
-.popper.l.out{transition:transform .5s ease-in;transform:translate(-160px,140px) rotate(32deg)} .popper.r.out{transition:transform .5s ease-in;transform:translate(160px,140px) rotate(-32deg) scaleX(-1)}
-.popper svg{position:absolute;left:0;top:0;width:84px;height:110px;overflow:visible}
-.popper .mouth{position:absolute;left:42px;top:6px;width:1px;height:1px}
-.popper .str{position:absolute;left:41px;top:104px;width:2px;height:26px;background:#d9a441;border-radius:2px;transition:height .32s cubic-bezier(.5,0,.2,1)}
-.popper .hand{position:absolute;left:22px;top:122px;font-size:40px;line-height:1;transition:transform .32s cubic-bezier(.5,0,.2,1)}
-.popper.pull .str{height:70px} .popper.pull .hand{transform:translateY(44px) rotate(-8deg)}
-.pan{position:fixed;z-index:103;pointer-events:none;font-family:var(--display);font-weight:800;font-size:clamp(22px,6.5vw,36px);color:var(--accent);text-shadow:0 2px 0 #fff,0 0 12px #fff;white-space:nowrap;animation:pan 1s cubic-bezier(.2,1.6,.4,1) both}
-@keyframes pan{0%{transform:translate(-50%,-50%) scale(.2) rotate(var(--rt));opacity:0}30%{transform:translate(-50%,-50%) scale(1.15) rotate(var(--rt));opacity:1}70%{opacity:1}100%{transform:translate(-50%,-80%) scale(1) rotate(var(--rt));opacity:0}}
-.flash{position:fixed;z-index:101;pointer-events:none;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;background:radial-gradient(circle,#fff 0,#fff6 35%,#ffd54a33 60%,transparent 70%);animation:flash .5s ease-out both}
-@keyframes flash{from{transform:scale(.2);opacity:1}to{transform:scale(2.4);opacity:0}}`;
-  const CONE='<svg viewBox="0 0 84 110" aria-hidden="true"><defs><clipPath id="cc"><path d="M10 10 L74 10 L48 104 L36 104 Z"/></clipPath></defs>'
-    +'<g clip-path="url(#cc)"><rect x="0" y="0" width="84" height="110" fill="#e8517f"/>'
-    +'<path d="M0 26 L84 14 L84 30 L0 42Z M0 58 L84 46 L84 62 L0 74Z M0 90 L84 78 L84 94 L0 106Z" fill="#ffd54a"/></g>'
-    +'<ellipse cx="42" cy="10" rx="32" ry="7" fill="#5b7fe0"/><ellipse cx="42" cy="10" rx="25" ry="4.5" fill="#3d5bb8"/>'
-    +'<rect x="34" y="100" width="16" height="8" rx="3" fill="#a35fd1"/></svg>';
-  function makePopper(side){
-    const d=document.createElement("div"); d.className="popper "+side;
-    d.innerHTML=CONE+'<span class="mouth"></span><span class="str"></span><span class="hand">🤏</span>';
-    document.body.append(d); return d;
-  }
-  function bang(p,side){
-    const m=p.querySelector(".mouth").getBoundingClientRect(), x=m.left, y=m.top;
-    const deg=side==="l"?-58:-122;   // クラッカーの口が向いている方へ
-    burst(x,y,deg,reduce?50:120,46);
-    const f=document.createElement("div"); f.className="flash"; f.style.left=x+"px"; f.style.top=y+"px"; document.body.append(f); setTimeout(()=>f.remove(),600);
-    const t=document.createElement("div"); t.className="pan"; t.textContent="パーン！";
-    t.style.left=(side==="l"?W*0.27:W*0.73)+"px"; t.style.top=Math.max(60,y-(side==="l"?150:90))+"px";
-    t.style.setProperty("--rt",side==="l"?"-12deg":"12deg");
-    document.body.append(t); setTimeout(()=>t.remove(),1100);
+    for(const s of S){
+      const k=(el-s.t)/s.life; if(k<0||k>1) continue;
+      const a=Math.sin(k*Math.PI);   // ふわっと光って、ふわっと消える
+      star(s.x*W,s.y*H,s.r*(0.4+0.6*a),a*fade,s.c,s.rot+k*0.8);
+    }
+    if(el<end) requestAnimationFrame(frame); else { cv.remove(); sweep.remove(); }
   }
   function go(){
-    if(reduce){   // 動きを減らす設定の人には、紙吹雪だけ
-      burst(0,H,-60,40,40); burst(W,H,-120,40,40);
-      const box=$("countdown"); box.classList.add("bdpop"); raf=requestAnimationFrame(frame); return;
-    }
-    const L=makePopper("l"), R=makePopper("r");
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{ L.classList.add("in"); R.classList.add("in"); }));   // ① 両サイドから出てくる
-    setTimeout(()=>{ L.classList.add("pull"); R.classList.add("pull"); },650);                               // ② 手がひもを引っぱる
-    setTimeout(()=>{                                                                                         // ③ パーン！
-      L.classList.add("kick"); R.classList.add("kick");
-      bang(L,"l"); bang(R,"r");
-      const box=$("countdown"); box.classList.remove("bdpop"); void box.offsetWidth; box.classList.add("bdpop");
-      raf=requestAnimationFrame(frame);
-    },980);
-    setTimeout(()=>{ L.classList.remove("kick"); R.classList.remove("kick"); },1180);
-    setTimeout(()=>{ L.classList.add("out"); R.classList.add("out"); },2300);                                   // ④ 引っこむ
-    setTimeout(()=>{ L.remove(); R.remove(); },2900);
+    if(!reduce) sweep.style.animation="kirasweep 1.4s ease-out .1s both";
+    const box=$("countdown"); box.classList.remove("bdpop"); void box.offsetWidth; box.classList.add("bdpop");
+    requestAnimationFrame(frame);
   }
-  // 画面が描かれてから、少しだけ間をおいて始める
-  if(document.readyState==="complete") setTimeout(go,300); else addEventListener("load",()=>setTimeout(go,300));
+  if(document.readyState==="complete") setTimeout(go,250); else addEventListener("load",()=>setTimeout(go,250));
 })();
 </script>
 </body>
