@@ -216,7 +216,7 @@ loadProjects(); drawCountdown(); setInterval(drawCountdown, 60e3);
 
   // ① 最初は真っ白な幕でページをかくしておく
   const veil=document.createElement("div");
-  veil.style.cssText="position:fixed;inset:0;z-index:98;background:#fff;pointer-events:none";
+  veil.style.cssText="position:fixed;inset:0;z-index:98;background:radial-gradient(ellipse at 50% 40%,#fffdfb 0%,#fff6f0 55%,#fbe9f0 100%);pointer-events:none";
   document.body.append(veil);
 
   const cv=document.createElement("canvas");
@@ -227,19 +227,34 @@ loadProjects(); drawCountdown(); setInterval(drawCountdown, 60e3);
   size(); addEventListener("resize",size);
   const css=getComputedStyle(document.documentElement);
   const COLS=["--w1","--w2","--w3","--w4","--w5"].map(v=>css.getPropertyValue(v).trim()||"#e8517f").concat(["#ffd54a","#ffffff"]);
-  const GLOW=["#ffcf3a","#ff8fb3","#ffe066","#c9a2ff","#ffb347","#ff6fa0"];
+  // シャンパンゴールドとローズゴールドの、細い光のキラキラ
+  const GLOW=["#d9a441","#e8bd62","#e07f9c","#c99a3c","#eb98b0"];
 
   // キラキラ（4つの角がある星）。白い幕の上で光って、幕が溶けるのといっしょに消えていく
   const S=[];
-  const NS=reduce?24:80;
-  for(let i=0;i<NS;i++) S.push({x:Math.random(),y:Math.random(),t:Math.random()*2000,life:600+Math.random()*700,r:10+Math.random()*(i%5===0?26:14),c:GLOW[i%GLOW.length],rot:Math.random()*0.6});
-  function star(x,y,r,a,c,rot){
-    g.save(); g.translate(x,y); g.rotate(rot);
-    const grd=g.createRadialGradient(0,0,0,0,0,r*1.6); grd.addColorStop(0,c); grd.addColorStop(.4,c); grd.addColorStop(1,"rgba(255,255,255,0)");
-    g.globalAlpha=a*.28; g.fillStyle=grd; g.beginPath(); g.arc(0,0,r*1.6,0,6.28); g.fill();
-    g.globalAlpha=a; g.fillStyle=c; g.beginPath();
-    const k=r*0.22; g.moveTo(0,-r); g.quadraticCurveTo(k,-k,r,0); g.quadraticCurveTo(k,k,0,r); g.quadraticCurveTo(-k,k,-r,0); g.quadraticCurveTo(-k,-k,0,-r); g.fill();
-    g.fillStyle="#fff"; g.beginPath(); g.arc(0,0,r*0.18,0,6.28); g.fill();
+  // 大きい光（少しだけ）と、こまかい光のつぶ（たくさん）
+  const NS=reduce?10:26, ND=reduce?36:110;
+  for(let i=0;i<NS;i++) S.push({x:Math.random(),y:Math.random(),t:Math.random()*2000,life:900+Math.random()*700,r:26+Math.random()*(i%4===0?44:22),c:GLOW[i%GLOW.length],rot:(Math.random()-.5)*0.3,big:1});
+  for(let i=0;i<ND;i++) S.push({x:Math.random(),y:Math.random(),t:Math.random()*2300,life:500+Math.random()*700,r:1+Math.random()*2,c:GLOW[i%GLOW.length],rot:0,big:0});
+  function line(len,wid,c){
+    const grd=g.createLinearGradient(0,-len,0,len);
+    grd.addColorStop(0,"rgba(255,255,255,0)"); grd.addColorStop(.5,c); grd.addColorStop(1,"rgba(255,255,255,0)");
+    g.fillStyle=grd; g.beginPath(); g.moveTo(0,-len); g.quadraticCurveTo(wid,0,0,len); g.quadraticCurveTo(-wid,0,0,-len); g.fill();
+  }
+  function star(x,y,r,a,c,rot,big){
+    g.save(); g.translate(x,y); g.globalAlpha=a;
+    if(!big){   // 光のつぶ
+      g.shadowColor=c; g.shadowBlur=6; g.fillStyle=c; g.beginPath(); g.arc(0,0,r,0,6.28); g.fill();
+      g.restore(); return;
+    }
+    // やわらかい光のにじみ
+    const glow=g.createRadialGradient(0,0,0,0,0,r*0.9); glow.addColorStop(0,c); glow.addColorStop(1,"rgba(255,255,255,0)");
+    g.globalAlpha=a*.45; g.fillStyle=glow; g.beginPath(); g.arc(0,0,r*0.9,0,6.28); g.fill();
+    g.globalAlpha=a; g.rotate(rot);
+    line(r,r*0.09,c); line(r*0.6,r*0.05,"#fffdf6");                 // たての細い光
+    g.rotate(Math.PI/2); line(r*0.72,r*0.08,c); line(r*0.45,r*0.04,"#fffdf6");   // よこの細い光
+    g.rotate(Math.PI/4); line(r*0.32,r*0.04,c); g.rotate(Math.PI/2); line(r*0.32,r*0.04,c);   // ななめの短い光
+    g.shadowColor=c; g.shadowBlur=10; g.fillStyle="#fffdf6"; g.beginPath(); g.arc(0,0,Math.max(1.4,r*0.07),0,6.28); g.fill();   // まん中の白い点
     g.restore();
   }
 
@@ -311,7 +326,7 @@ loadProjects(); drawCountdown(); setInterval(drawCountdown, 60e3);
     for(const s of S){
       const q=(el-s.t)/s.life; if(q<0||q>1) continue;
       const a=Math.sin(q*Math.PI);
-      star(s.x*W,s.y*H,s.r*(0.4+0.6*a),a,s.c,s.rot+q*0.8);
+      star(s.x*W,s.y*H,s.r*(s.big?0.5+0.5*a:1),a,s.c,s.rot+q*0.25,s.big);
     }
     // 紙吹雪
     const fade=Math.max(0,Math.min(1,(END-el)/1000));
