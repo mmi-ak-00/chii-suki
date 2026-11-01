@@ -92,6 +92,7 @@ li.new{animation:pop .5s ease}
 .count-box{position:relative;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;background:var(--bg);border-radius:20px;padding:12px 16px;margin-top:6px;font-family:var(--display);font-weight:800}
 .count-box .n{font-size:44px;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
 .count-box .u{font-size:16px}
+.count-box.after .n{font-size:clamp(26px,7vw,36px)}
 .count-box .sub{font-family:var(--body);font-weight:400;font-size:13px;color:var(--muted);flex-basis:100%}
 .menu{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:10px}
 .menu a,.menu .soon{display:flex;flex-direction:column;gap:2px;text-decoration:none;color:var(--fg);background:var(--surface);border:2px solid var(--line);border-radius:20px;padding:14px 16px;min-width:0}
@@ -176,15 +177,19 @@ async function loadProjects(){
   drawMenu();
 }
 function drawCountdown(){
-  // 日本時間で計算
+  // 日本時間で計算。この生誕企画は2026年のお誕生日（11/2）に向けたもの
   const now=new Date(Date.now()+9*3600e3);
-  const y=now.getUTCFullYear();
-  const today=Date.UTC(y,now.getUTCMonth(),now.getUTCDate());
-  let bd=Date.UTC(y,BIRTHDAY.month-1,BIRTHDAY.day);
-  if(bd<today) bd=Date.UTC(y+1,BIRTHDAY.month-1,BIRTHDAY.day);
+  const today=Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate());
+  const bd=Date.UTC(2026,BIRTHDAY.month-1,BIRTHDAY.day);
   const days=Math.round((bd-today)/864e5);
   const box=$("countdown");
+  box.classList.toggle("after",days<0);
   if(days===0){ box.innerHTML='<span class="n">HAPPY BIRTHDAY</span><span class="sub">ちぃちゃん、お誕生日おめでとう！</span>'; return; }
+  if(days<0){
+    // お誕生日が終わったあと：お礼と、24歳の1年への応援
+    box.innerHTML='<span class="n">24歳もよろしくね💗</span><span class="sub">ちぃちゃん、24歳のお誕生日おめでとう！<br>生誕企画に参加してくれたみなさん、ありがとうございました🎉</span>';
+    return;
+  }
   box.innerHTML=`<span class="u">お誕生日まで あと</span><span class="n">${days}</span><span class="u">日</span>`;
 }
 
@@ -200,6 +205,60 @@ function drawCountdown(){
   }));
 })();
 loadProjects(); drawCountdown(); setInterval(drawCountdown, 60e3);
+
+// ===== 11/2限定：ページを開いたとき、左右からクラッカーで「パーン！」 =====
+// URLに ?pan を付けると、当日でなくても試せる
+(function(){
+  const now=new Date(Date.now()+9*3600e3);
+  const isBirthday=now.getUTCFullYear()===2026&&now.getUTCMonth()===10&&now.getUTCDate()===2;
+  if(!isBirthday && !/[?&]pan/.test(location.search)) return;
+  const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const cv=document.createElement("canvas");
+  cv.style.cssText="position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:100";
+  document.body.append(cv);
+  const g=cv.getContext("2d"), dpr=Math.min(2,window.devicePixelRatio||1);
+  let W=0,H=0; const size=()=>{ W=innerWidth; H=innerHeight; cv.width=W*dpr; cv.height=H*dpr; g.setTransform(dpr,0,0,dpr,0,0); };
+  size(); addEventListener("resize",size);
+  const css=getComputedStyle(document.documentElement);
+  const COLS=["--w1","--w2","--w3","--w4","--w5"].map(v=>css.getPropertyValue(v).trim()||"#e8517f").concat(["#ffd54a","#ffffff"]);
+  const P=[];
+  // 左下・右下の2か所から、斜め上に向けて紙吹雪を打ち上げる
+  function burst(x,y,dir,n){
+    for(let i=0;i<n;i++){
+      const ang=(-90+dir*(8+Math.random()*28))*Math.PI/180, sp=(Math.sqrt(H/844)*(reduce?24:30))+Math.random()*12;   // 画面のいちばん上まで届く強さ
+      P.push({x,y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,c:COLS[i%COLS.length],w:6+Math.random()*6,h:8+Math.random()*8,
+        r:Math.random()*6.28,vr:(Math.random()-.5)*.3,shape:Math.random()<.25?"o":"r",sw:Math.random()*6.28});
+    }
+  }
+  // カウントダウンの「HAPPY BIRTHDAY」を、パーンに合わせてぽんっと弾ませる
+  const st=document.createElement("style");
+  st.textContent="@keyframes bdpop{0%{transform:scale(.6);opacity:0}55%{transform:scale(1.08);opacity:1}75%{transform:scale(.97)}100%{transform:none}} .count-box.bdpop{animation:bdpop .8s cubic-bezier(.2,1.4,.4,1) both}";
+  document.head.append(st);
+  let t0=0, raf=0;
+  function frame(t){
+    if(!t0) t0=t;
+    const el=t-t0;
+    g.clearRect(0,0,W,H);
+    for(const p of P){
+      p.vy+=0.32; p.vx*=0.975; p.vy*=0.975; if(p.vy>2.6) p.vy=2.6; p.x+=Math.sin(p.sw)*0.6; p.x+=p.vx; p.y+=p.vy; p.r+=p.vr; p.sw+=0.15;
+      const fade=Math.max(0,Math.min(1,(5600-el)/1000));
+      g.save(); g.globalAlpha=fade; g.translate(p.x,p.y); g.rotate(p.r); g.fillStyle=p.c;
+      if(p.shape==="o"){ g.beginPath(); g.arc(0,0,p.w/2,0,6.28); g.fill(); }
+      else g.fillRect(-p.w/2,-p.h/2*Math.abs(Math.cos(p.sw)),p.w,p.h*Math.abs(Math.cos(p.sw))+1);
+      g.restore();
+    }
+    if(el<5700) raf=requestAnimationFrame(frame);
+    else { cv.remove(); }
+  }
+  function go(){
+    burst(0,H,1,reduce?40:110); burst(W,H,-1,reduce?40:110);
+    setTimeout(()=>{ burst(W*0.25,H,1,reduce?0:60); burst(W*0.75,H,-1,reduce?0:60); },350);
+    const box=$("countdown"); box.classList.remove("bdpop"); void box.offsetWidth; box.classList.add("bdpop");
+    raf=requestAnimationFrame(frame);
+  }
+  // 画面が描かれてから、少しだけ間をおいて「パーン」
+  if(document.readyState==="complete") setTimeout(go,300); else addEventListener("load",()=>setTimeout(go,300));
+})();
 </script>
 </body>
 </html>
