@@ -206,13 +206,19 @@ function drawCountdown(){
 })();
 loadProjects(); drawCountdown(); setInterval(drawCountdown, 60e3);
 
-// ===== 11/2限定：トップページを開いたとき、画面がキラキラ〜っと光って紙吹雪がふわっと舞う =====
+// ===== 11/2限定：真っ白な画面がキラキラ〜っと溶けてトップページが見えてきて、両サイドからクラッカーが出てきて「パーン！」 =====
 // URLに ?pan を付けると、当日でなくても試せる
 (function(){
   const now=new Date(Date.now()+9*3600e3);
   const isBirthday=now.getUTCFullYear()===2026&&now.getUTCMonth()===10&&now.getUTCDate()===2;
   if(!isBirthday && !/[?&]pan/.test(location.search)) return;
   const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ① 最初は真っ白な幕でページをかくしておく
+  const veil=document.createElement("div");
+  veil.style.cssText="position:fixed;inset:0;z-index:98;background:#fff;pointer-events:none";
+  document.body.append(veil);
+
   const cv=document.createElement("canvas");
   cv.style.cssText="position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:100";
   document.body.append(cv);
@@ -220,57 +226,122 @@ loadProjects(); drawCountdown(); setInterval(drawCountdown, 60e3);
   let W=0,H=0; const size=()=>{ W=innerWidth; H=innerHeight; cv.width=W*dpr; cv.height=H*dpr; g.setTransform(dpr,0,0,dpr,0,0); };
   size(); addEventListener("resize",size);
   const css=getComputedStyle(document.documentElement);
-  const COLS=["--w1","--w2","--w3","--w4","--w5"].map(v=>css.getPropertyValue(v).trim()||"#e8517f").concat(["#ffd54a"]);
+  const COLS=["--w1","--w2","--w3","--w4","--w5"].map(v=>css.getPropertyValue(v).trim()||"#e8517f").concat(["#ffd54a","#ffffff"]);
   const GLOW=["#ffcf3a","#ff8fb3","#ffe066","#c9a2ff","#ffb347","#ff6fa0"];
-  const S=[], C=[];
-  // キラキラ（4つの角がある星）を、時間をずらして画面のあちこちに出す
-  const NS=reduce?28:90;
-  for(let i=0;i<NS;i++) S.push({x:Math.random(),y:Math.random()*0.95,t:Math.random()*2400,life:700+Math.random()*700,r:10+Math.random()*(i%5===0?26:14),c:GLOW[i%GLOW.length],rot:Math.random()*0.6});
-  // 紙吹雪：画面の上から、ひらひら落ちてくる
-  const NC=reduce?30:90;
-  for(let i=0;i<NC;i++) C.push({x:Math.random(),y:-0.05-Math.random()*0.6,vy:0.9+Math.random()*1.4,c:COLS[i%COLS.length],w:5+Math.random()*5,h:7+Math.random()*7,r:Math.random()*6.28,vr:(Math.random()-.5)*.08,sw:Math.random()*6.28,amp:0.6+Math.random()*1.2,o:Math.random()<.25});
+
+  // キラキラ（4つの角がある星）。白い幕の上で光って、幕が溶けるのといっしょに消えていく
+  const S=[];
+  const NS=reduce?24:80;
+  for(let i=0;i<NS;i++) S.push({x:Math.random(),y:Math.random(),t:Math.random()*2000,life:600+Math.random()*700,r:10+Math.random()*(i%5===0?26:14),c:GLOW[i%GLOW.length],rot:Math.random()*0.6});
   function star(x,y,r,a,c,rot){
-    g.save(); g.translate(x,y); g.rotate(rot); g.globalAlpha=a;
+    g.save(); g.translate(x,y); g.rotate(rot);
     const grd=g.createRadialGradient(0,0,0,0,0,r*1.6); grd.addColorStop(0,c); grd.addColorStop(.4,c); grd.addColorStop(1,"rgba(255,255,255,0)");
-    g.fillStyle=grd; g.beginPath(); g.arc(0,0,r*1.6,0,6.28); g.globalAlpha=a*.28; g.fill();
+    g.globalAlpha=a*.28; g.fillStyle=grd; g.beginPath(); g.arc(0,0,r*1.6,0,6.28); g.fill();
     g.globalAlpha=a; g.fillStyle=c; g.beginPath();
     const k=r*0.22; g.moveTo(0,-r); g.quadraticCurveTo(k,-k,r,0); g.quadraticCurveTo(k,k,0,r); g.quadraticCurveTo(-k,k,-r,0); g.quadraticCurveTo(-k,-k,0,-r); g.fill();
     g.fillStyle="#fff"; g.beginPath(); g.arc(0,0,r*0.18,0,6.28); g.fill();
     g.restore();
   }
-  // 画面全体を、ふわっと光の帯が通りすぎる
-  const sweep=document.createElement("div");
-  sweep.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:99;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.75) 45%,rgba(255,236,170,.55) 50%,rgba(255,255,255,.75) 55%,transparent 70%);background-size:300% 100%;background-position:120% 0;opacity:0";
-  document.body.append(sweep);
+
+  // 紙吹雪（クラッカーから飛び出す）
+  const P=[];
+  function burst(x,y,deg,n,spread){
+    for(let i=0;i<n;i++){
+      const ang=(deg+(Math.random()-.5)*(spread||40))*Math.PI/180, sp=(Math.sqrt(H/844)*(reduce?24:30))+Math.random()*12;   // 画面のいちばん上まで届く強さ
+      P.push({x,y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,c:COLS[i%COLS.length],w:6+Math.random()*6,h:8+Math.random()*8,
+        r:Math.random()*6.28,vr:(Math.random()-.5)*.3,shape:Math.random()<.25?"o":"r",sw:Math.random()*6.28});
+    }
+  }
+
   const st=document.createElement("style");
-  st.textContent="@keyframes bdpop{0%{transform:scale(.85);filter:brightness(1.3)}50%{transform:scale(1.05)}100%{transform:none;filter:none}} .count-box.bdpop{animation:bdpop .9s cubic-bezier(.2,1.4,.4,1) both} @keyframes kirasweep{0%{background-position:120% 0;opacity:0}15%{opacity:1}100%{background-position:-20% 0;opacity:0}}";
+  st.textContent=`
+@keyframes bdpop{0%{transform:scale(.6);opacity:0}55%{transform:scale(1.08);opacity:1}75%{transform:scale(.97)}100%{transform:none}}
+.count-box.bdpop{animation:bdpop .8s cubic-bezier(.2,1.4,.4,1) both}
+.popper{position:fixed;bottom:calc(64px + env(safe-area-inset-bottom,0px));z-index:102;pointer-events:none;width:84px;height:110px;transition:transform .45s cubic-bezier(.2,1.3,.4,1)}
+.popper.l{left:30px;transform:translate(-170px,90px) rotate(32deg);transform-origin:50% 80%}
+.popper.r{right:30px;transform:translate(170px,90px) rotate(-32deg) scaleX(-1);transform-origin:50% 80%}
+.popper.l.in{transform:translate(0,0) rotate(32deg)} .popper.r.in{transform:translate(0,0) rotate(-32deg) scaleX(-1)}
+.popper.l.ready{transition:transform .25s ease-in;transform:translate(4px,8px) rotate(26deg) scale(.94)} .popper.r.ready{transition:transform .25s ease-in;transform:translate(-4px,8px) rotate(-26deg) scaleX(-1) scale(.94)}
+.popper.l.kick{transition:transform .12s ease-out;transform:translate(-10px,14px) rotate(38deg) scale(1.06)} .popper.r.kick{transition:transform .12s ease-out;transform:translate(10px,14px) rotate(-38deg) scaleX(-1) scale(1.06)}
+.popper.l.out{transition:transform .5s ease-in;transform:translate(-180px,160px) rotate(32deg)} .popper.r.out{transition:transform .5s ease-in;transform:translate(180px,160px) rotate(-32deg) scaleX(-1)}
+.popper svg{position:absolute;left:0;top:0;width:84px;height:110px;overflow:visible}
+.popper .mouth{position:absolute;left:42px;top:6px;width:1px;height:1px}
+.pan{position:fixed;z-index:103;pointer-events:none;font-family:var(--display);font-weight:800;font-size:clamp(22px,6.5vw,36px);color:var(--accent);text-shadow:0 2px 0 #fff,0 0 12px #fff;white-space:nowrap;animation:pan 1s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes pan{0%{transform:translate(-50%,-50%) scale(.2) rotate(var(--rt));opacity:0}30%{transform:translate(-50%,-50%) scale(1.15) rotate(var(--rt));opacity:1}70%{opacity:1}100%{transform:translate(-50%,-80%) scale(1) rotate(var(--rt));opacity:0}}
+.flash{position:fixed;z-index:101;pointer-events:none;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;background:radial-gradient(circle,#fff 0,#fff6 35%,#ffd54a33 60%,transparent 70%);animation:flash .5s ease-out both}
+@keyframes flash{from{transform:scale(.2);opacity:1}to{transform:scale(2.4);opacity:0}}`;
   document.head.append(st);
+
+  const CONE='<svg viewBox="0 0 84 110" aria-hidden="true"><defs><clipPath id="cc"><path d="M10 10 L74 10 L48 104 L36 104 Z"/></clipPath></defs>'
+    +'<g clip-path="url(#cc)"><rect x="0" y="0" width="84" height="110" fill="#e8517f"/>'
+    +'<path d="M0 26 L84 14 L84 30 L0 42Z M0 58 L84 46 L84 62 L0 74Z M0 90 L84 78 L84 94 L0 106Z" fill="#ffd54a"/></g>'
+    +'<ellipse cx="42" cy="10" rx="32" ry="7" fill="#5b7fe0"/><ellipse cx="42" cy="10" rx="25" ry="4.5" fill="#3d5bb8"/>'
+    +'<rect x="34" y="100" width="16" height="8" rx="3" fill="#a35fd1"/></svg>';
+  function makePopper(side){
+    const d=document.createElement("div"); d.className="popper "+side;
+    d.innerHTML=CONE+'<span class="mouth"></span>';
+    document.body.append(d); return d;
+  }
+  function bang(p,side){
+    const m=p.querySelector(".mouth").getBoundingClientRect(), x=m.left, y=m.top;
+    burst(x,y,side==="l"?-58:-122,reduce?50:120,46);   // クラッカーの口が向いている方へ
+    const f=document.createElement("div"); f.className="flash"; f.style.left=x+"px"; f.style.top=y+"px"; document.body.append(f); setTimeout(()=>f.remove(),600);
+    const t=document.createElement("div"); t.className="pan"; t.textContent="パーン！";
+    t.style.left=(side==="l"?W*0.27:W*0.73)+"px"; t.style.top=Math.max(60,y-(side==="l"?150:90))+"px";
+    t.style.setProperty("--rt",side==="l"?"-12deg":"12deg");
+    document.body.append(t); setTimeout(()=>t.remove(),1100);
+  }
+
+  // ② 白い幕を、真ん中からまるく溶かしていく（キラキラの下からページが見えてくる）
+  const REVEAL_AT=1000, REVEAL_LEN=reduce?400:1500, BANG_AT=reduce?1300:3300, END=BANG_AT+5200;
   let t0=0;
   function frame(t){
     if(!t0) t0=t;
-    const el=t-t0, end=reduce?3500:5200, fade=Math.max(0,Math.min(1,(end-el)/900));
+    const el=t-t0;
+    const maxR=Math.hypot(W,H);
+    const k=Math.max(0,Math.min(1,(el-REVEAL_AT)/REVEAL_LEN)), e=k*k*(3-2*k);
+    if(k<1){
+      const band=Math.max(60,maxR*0.25), R=e*(maxR+band);   // R=0のときは全面まっ白
+      const m=`radial-gradient(circle at 50% 40%, transparent ${R-band}px, #000 ${R}px)`;
+      veil.style.webkitMaskImage=m; veil.style.maskImage=m;
+      veil.style.opacity=String(1-e*0.35);
+    } else if(veil.isConnected) veil.remove();
     g.clearRect(0,0,W,H);
-    for(const p of C){
-      p.y+=p.vy/H*1.0*3; p.sw+=0.05; p.r+=p.vr;
-      const x=p.x*W+Math.sin(p.sw)*p.amp*14, y=p.y*H;
-      g.save(); g.globalAlpha=fade; g.translate(x,y); g.rotate(p.r); g.fillStyle=p.c;
-      if(p.o){ g.beginPath(); g.arc(0,0,p.w/2,0,6.28); g.fill(); }
-      else { const s=Math.abs(Math.cos(p.sw*1.6)); g.fillRect(-p.w/2,-p.h/2*s,p.w,p.h*s+1); }
+    // キラキラ
+    for(const s of S){
+      const q=(el-s.t)/s.life; if(q<0||q>1) continue;
+      const a=Math.sin(q*Math.PI);
+      star(s.x*W,s.y*H,s.r*(0.4+0.6*a),a,s.c,s.rot+q*0.8);
+    }
+    // 紙吹雪
+    const fade=Math.max(0,Math.min(1,(END-el)/1000));
+    for(const p of P){
+      p.vy+=0.32; p.vx*=0.975; p.vy*=0.975; if(p.vy>2.6) p.vy=2.6; p.x+=Math.sin(p.sw)*0.6;
+      p.x+=p.vx; p.y+=p.vy; p.r+=p.vr; p.sw+=0.15;
+      g.save(); g.globalAlpha=fade; g.translate(p.x,p.y); g.rotate(p.r); g.fillStyle=p.c;
+      if(p.shape==="o"){ g.beginPath(); g.arc(0,0,p.w/2,0,6.28); g.fill(); }
+      else g.fillRect(-p.w/2,-p.h/2*Math.abs(Math.cos(p.sw)),p.w,p.h*Math.abs(Math.cos(p.sw))+1);
       g.restore();
     }
-    for(const s of S){
-      const k=(el-s.t)/s.life; if(k<0||k>1) continue;
-      const a=Math.sin(k*Math.PI);   // ふわっと光って、ふわっと消える
-      star(s.x*W,s.y*H,s.r*(0.4+0.6*a),a*fade,s.c,s.rot+k*0.8);
-    }
-    if(el<end) requestAnimationFrame(frame); else { cv.remove(); sweep.remove(); }
+    if(el<END) requestAnimationFrame(frame); else { cv.remove(); if(veil.isConnected) veil.remove(); }
   }
   function go(){
-    if(!reduce) sweep.style.animation="kirasweep 1.4s ease-out .1s both";
-    const box=$("countdown"); box.classList.remove("bdpop"); void box.offsetWidth; box.classList.add("bdpop");
     requestAnimationFrame(frame);
+    if(reduce){ setTimeout(()=>{ burst(0,H,-60,40,40); burst(W,H,-120,40,40); $("countdown").classList.add("bdpop"); },BANG_AT); return; }
+    const L=makePopper("l"), R=makePopper("r");
+    // ③ ページが見えてきたら、両サイドからクラッカーが出てくる
+    setTimeout(()=>{ L.classList.add("in"); R.classList.add("in"); },BANG_AT-900);
+    setTimeout(()=>{ L.classList.add("ready"); R.classList.add("ready"); },BANG_AT-280);   // ぐっとためて
+    setTimeout(()=>{                                                                         // ④ パーン！
+      L.classList.remove("ready"); R.classList.remove("ready"); L.classList.add("kick"); R.classList.add("kick");
+      bang(L,"l"); bang(R,"r");
+      const box=$("countdown"); box.classList.remove("bdpop"); void box.offsetWidth; box.classList.add("bdpop");
+    },BANG_AT);
+    setTimeout(()=>{ L.classList.remove("kick"); R.classList.remove("kick"); },BANG_AT+200);
+    setTimeout(()=>{ L.classList.add("out"); R.classList.add("out"); },BANG_AT+1300);         // ⑤ 引っこむ
+    setTimeout(()=>{ L.remove(); R.remove(); },BANG_AT+1900);
   }
-  if(document.readyState==="complete") setTimeout(go,250); else addEventListener("load",()=>setTimeout(go,250));
+  if(document.readyState==="complete") setTimeout(go,50); else addEventListener("load",()=>setTimeout(go,50));
 })();
 </script>
 </body>
