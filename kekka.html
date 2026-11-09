@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ちぃむみーてぃんぐ2026 企画の結果</title>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ちぃむみーてぃんぐ2026">
+<meta property="og:title" content="企画の結果まとめ｜ちぃむみーてぃんぐ2026">
+<meta property="og:description" content="ちぃむみーてぃんぐ2026 みんなで作った企画の結果をまとめて見られます">
+<meta property="og:image" content="/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="/ogp.png">
+<meta name="description" content="ちぃちゃん生誕企画「ちぃむみーてぃんぐ2026」企画の結果まとめ">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
+<style>
+:root{
+  --bg:#fff7f9; --surface:#ffffff; --fg:#3b2a33; --muted:#8a7480; --line:#f1d9e2;
+  --accent:#e8517f; --accent-ink:#ffffff;
+  --w1:#e8517f; --w2:#f08a3c; --w3:#3aa58a; --w4:#5b7fe0; --w5:#a35fd1;
+  --t1:#fde7ef; --t2:#ffeede; --t3:#e3f5ee; --t4:#e6ecfd; --t5:#f1e6fb;
+  --display:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",system-ui,sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1f1519; --surface:#2a1d23; --fg:#f6e9ee; --muted:#b59aa6; --line:#43303a;
+  --accent:#ff7aa2; --accent-ink:#2a0f19;
+  --w1:#ff7aa2; --w2:#ffab6b; --w3:#5fd1b0; --w4:#8fa9ff; --w5:#cf96f5;
+  --t1:#3a2430; --t2:#3a2c22; --t3:#20332c; --t4:#232a3d; --t5:#2f2439; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1f1519; --surface:#2a1d23; --fg:#f6e9ee; --muted:#b59aa6; --line:#43303a;
+  --accent:#ff7aa2; --accent-ink:#2a0f19;
+  --w1:#ff7aa2; --w2:#ffab6b; --w3:#5fd1b0; --w4:#8fa9ff; --w5:#cf96f5;
+  --t1:#3a2430; --t2:#3a2c22; --t3:#20332c; --t4:#232a3d; --t5:#2f2439; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.back{font-family:var(--display);font-weight:800;font-size:14px;color:var(--accent);text-decoration:none;align-self:flex-start}
+.back:hover,.back:focus-visible{text-decoration:underline}
+header{display:flex;flex-direction:column;gap:6px}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(26px,6.5vw,36px);line-height:1.25;margin:0;text-wrap:balance}
+h1 span{color:var(--accent)}
+.sub{margin:0;font-family:var(--display);font-weight:800;font-size:16px}
+.lead{margin:0;color:var(--muted);font-size:14px}
+.status{font-size:13px;color:var(--muted);margin:0}
+footer{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
+button,a,input{touch-action:manipulation}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:var(--display);font-weight:800;font-size:16px;border:0;border-radius:999px;padding:11px 22px;background:var(--accent);color:var(--accent-ink);cursor:pointer;text-decoration:none}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.sub2{background:var(--surface);color:var(--accent);border:2px solid var(--accent)}
+.viewer{position:fixed;inset:0;z-index:50;background:rgba(20,10,15,.86);display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px))}
+.viewer figure{margin:0;max-width:min(560px,100%);display:flex;flex-direction:column;gap:12px;align-items:center}
+.viewer img{max-width:100%;max-height:68vh;border-radius:16px;background:#000}
+.viewer figcaption{color:#fff;text-align:center;font-size:15px}
+.viewer .close{position:absolute;top:max(12px,env(safe-area-inset-top,0px));right:12px;font:inherit;font-weight:700;background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:999px;padding:8px 14px;cursor:pointer}
+
+.lock{background:var(--surface);border:2px dashed var(--line);border-radius:22px;padding:28px 18px;text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center}
+.lock .ic{font-size:40px;line-height:1}
+.lock b{font-family:var(--display);font-size:18px}
+.meta{font-size:13px;color:var(--muted);margin:0;font-variant-numeric:tabular-nums}
+
+.nav{position:sticky;top:0;z-index:20;margin:0 -16px;padding:8px 16px;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav a{flex:none;font-family:var(--display);font-weight:800;font-size:13px;text-decoration:none;color:var(--fg);background:var(--surface);border:2px solid var(--line);border-radius:999px;padding:5px 12px}
+.sec{background:var(--surface);border:2px solid var(--line);border-radius:24px;padding:18px 16px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:60px}
+.sec h2{margin:0;font-family:var(--display);font-weight:800;font-size:20px;line-height:1.35}
+.sec h2 small{display:block;font-size:12px;color:var(--accent);letter-spacing:.08em}
+.sec .note{margin:0;font-size:13px;color:var(--muted)}
+.sec .go{align-self:flex-start;font-family:var(--display);font-weight:800;font-size:13px;color:var(--accent);text-decoration:none}
+.sec h3{margin:6px 0 0;font-family:var(--display);font-weight:800;font-size:16px}
+.empty{color:var(--muted);font-size:14px;margin:0}
+/* ランキングの行（共通） */
+.rk{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.rk li{display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:14px;padding:8px 12px 8px 8px;min-width:0}
+.rk .no{flex:none;width:30px;text-align:center;font-family:var(--display);font-weight:800;color:var(--muted);font-variant-numeric:tabular-nums}
+.rk li.t1 .no{color:#d9a441}.rk li.t2 .no{color:#9aa5b4}.rk li.t3 .no{color:#c27c4e}
+.rk li.t1 .no::before{content:"👑";display:block;font-size:14px;line-height:1}
+.rk .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.rk .tp{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.rk .tx{font-weight:700;overflow-wrap:anywhere;line-height:1.45}
+.rk .nm{flex:none;font-family:var(--display);font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rk .nm small{font-size:11px;color:var(--muted);margin-left:1px}
+.rk .gb{height:6px;border-radius:999px;background:var(--line);overflow:hidden}
+.rk .gb i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--w1),var(--w5))}
+.rk .sub{font-size:12px;color:var(--muted);line-height:1.5}
+.rk img.pic{flex:none;width:52px;height:68px;object-fit:cover;border-radius:10px;background:var(--line);cursor:pointer}
+.more{align-self:center;font:inherit;font-weight:700;font-size:14px;color:var(--accent);background:none;border:2px solid var(--accent);border-radius:999px;padding:6px 18px;cursor:pointer}
+/* ことばのランキング（上位はチップで大きく） */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips span{font-family:var(--display);font-weight:800;border-radius:999px;padding:4px 14px;background:var(--bg);border:2px solid var(--line)}
+.chips span b{font-size:12px;color:var(--muted);margin-left:6px;font-variant-numeric:tabular-nums}
+/* TikTok */
+.th{position:relative;flex:none;width:60px;aspect-ratio:9/16;border-radius:10px;overflow:hidden;background:linear-gradient(160deg,var(--w1),var(--w5))}
+.th iframe{position:absolute;top:0;left:0;width:270px;height:480px;border:0;transform-origin:top left;transform:scale(calc(60 / 270));pointer-events:none}
+.ttlink{color:inherit;text-decoration:none}
+/* 写真 */
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px}
+.pgrid button{position:relative;padding:0;border:0;border-radius:10px;overflow:hidden;aspect-ratio:1;background:var(--line);cursor:pointer}
+.pgrid img{width:100%;height:100%;object-fit:cover;display:block}
+.pgrid .d{position:absolute;left:4px;bottom:4px;font-size:10px;font-weight:700;color:#fff;background:rgba(0,0,0,.45);border-radius:999px;padding:0 6px}
+.mo{font-family:var(--display);font-weight:800;font-size:14px;margin:6px 0 -4px}
+/* 投票の上位3つ */
+.podium{display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:8px;align-items:end}
+.pd{position:relative;padding:14px 0 0;border:0;background:none;font:inherit;color:inherit;cursor:pointer;text-align:center;display:flex;flex-direction:column;gap:4px}
+.pd .fr{aspect-ratio:3/4;border-radius:14px;overflow:hidden;border:4px solid var(--c);background:var(--line)}
+.pd img{width:100%;height:100%;object-fit:cover;display:block}
+.pd .r{position:absolute;top:0;left:50%;transform:translateX(-50%);z-index:1;white-space:nowrap;font-family:var(--display);font-weight:800;font-size:12px;background:var(--c);color:#fff;border-radius:999px;padding:2px 10px}
+.pd .v{font-family:var(--display);font-weight:800;font-variant-numeric:tabular-nums}
+.pd .v small{font-size:11px;color:var(--muted)}
+.pd .c{font-size:12px;color:var(--muted);line-height:1.4}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">← ちぃむみーてぃんぐ2026 トップへ</a>
+  <header>
+    <h1>企画の<span>結果</span>まとめ</h1>
+    <p class="sub">みんなで作った「ちぃむみーてぃんぐ2026」🎉</p>
+    <p class="lead">それぞれの企画に届いた好きの気持ちを、ぜんぶまとめて見られます。たくさん参加してくれてありがとうございました！</p>
+  </header>
+  <nav class="nav" aria-label="企画へ移動">
+    <a href="#k2">② 好きなところ</a><a href="#k3">③ 推しTikTok</a><a href="#k4">④ ちぃ記録</a><a href="#k5">⑤ 好きパフォーマンス</a><a href="#k6">⑥ 好き顔</a><a href="#k7">⑦ ちぃコス</a>
+  </nav>
+
+  <section class="sec" id="k2">
+    <h2><small>企画②</small>ちぃちゃんの好きなところ</h2>
+    <p class="note" id="k2n">読み込み中…</p>
+    <div class="chips" id="k2c"></div>
+    <ol class="rk" id="k2l"></ol>
+    <a class="go" href="/kikaku2">ワードクラウドを見る →</a>
+  </section>
+
+  <section class="sec" id="k3">
+    <h2><small>企画③</small>ちぃちゃんの推しTikTok</h2>
+    <p class="note" id="k3n">読み込み中…</p>
+    <div id="k3b"></div>
+    <a class="go" href="/kikaku3">企画のページを見る →</a>
+  </section>
+
+  <section class="sec" id="k4">
+    <h2><small>企画④</small>23歳のちぃ記録</h2>
+    <p class="note" id="k4n">読み込み中…</p>
+    <div id="k4b"></div>
+    <a class="go" href="/kikaku4">年表で見る →</a>
+  </section>
+
+  <section class="sec" id="k5">
+    <h2><small>企画⑤</small>ちぃちゃんの好きパフォーマンス</h2>
+    <p class="note" id="k5n">読み込み中…</p>
+    <ol class="rk" id="k5l"></ol>
+    <a class="go" href="/kikaku5">動画つきで見る →</a>
+  </section>
+
+  <section class="sec" id="k6">
+    <h2><small>企画⑥</small>わたしの選ぶちぃの好き顔</h2>
+    <p class="note" id="k6n">読み込み中…</p>
+    <div class="podium" id="k6p"></div>
+    <ol class="rk" id="k6l"></ol>
+  </section>
+
+  <section class="sec" id="k7">
+    <h2><small>企画⑦</small>わたしの選ぶ好きなちぃコス</h2>
+    <p class="note" id="k7n">読み込み中…</p>
+    <div class="podium" id="k7p"></div>
+    <ol class="rk" id="k7l"></ol>
+  </section>
+
+  <footer>※ファンによる非公式サイトです</footer>
+</div>
+<div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-label="写真を大きく見る">
+  <button class="close" type="button" id="vclose">閉じる ✕</button>
+  <figure><img id="vimg" alt=""><figcaption id="vcap"></figcaption></figure>
+</div>
+<script src="/words.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const el=(tag,cls,txt)=>{ const e=document.createElement(tag); if(cls) e.className=cls; if(txt!=null) e.textContent=txt; return e; };
+const getJ=async u=>{ const r=await fetch(u,{cache:"no-store"}); if(!r.ok) throw new Error(r.status); return r.json(); };
+function view(src,cap){ $("vimg").src=src; $("vcap").textContent=cap||""; $("viewer").hidden=false; }
+$("vclose").onclick=()=>$("viewer").hidden=true;
+$("viewer").addEventListener("click",e=>{ if(e.target===$("viewer")) $("viewer").hidden=true; });
+// 同じ数なら同じ順位
+function ranks(list,key){ let r=0,prev=null; list.forEach((x,i)=>{ if(x[key]!==prev){ r=i+1; prev=x[key]; } x._r=r; }); return list; }
+// ランキングの1行
+function row(x,opt){
+  const li=el("li",x._r<=3?"t"+x._r:"");
+  li.append(el("span","no",String(x._r)));
+  if(opt.pic) li.append(opt.pic);
+  const bd=el("div","bd"), tp=el("div","tp");
+  tp.append(el("span","tx",opt.text)); const nm=el("span","nm"); nm.append(String(opt.num)); nm.append(el("small",null,opt.unit)); tp.append(nm);
+  bd.append(tp);
+  const gb=el("div","gb"), i=el("i"); i.style.width=(opt.max?opt.num/opt.max*100:0)+"%"; gb.append(i); bd.append(gb);
+  if(opt.sub) bd.append(el("div","sub",opt.sub));
+  li.append(bd); return li;
+}
+// 長いリストは、はじめは一部だけ出して「もっと見る」で全部
+function fill(ol,items,make,first){
+  first=first||20;
+  ol.replaceChildren(...items.slice(0,first).map(make));
+  if(items.length>first){
+    const b=el("button","more",`残り${items.length-first}件も見る`); b.type="button";
+    b.onclick=()=>{ ol.append(...items.slice(first).map(make)); b.remove(); };
+    ol.after(b);
+  }
+}
+
+// ② 好きなところ：よく出たことばのランキング
+async function k2(){
+  try{
+    const d=await getJ("/api/posts");
+    const posts=d.posts||[];
+    if(!posts.length){ $("k2n").textContent="まだ投稿がありません。"; return; }
+    const {freq}=ChiiWords.count(posts,d.rules||{});
+    const words=ranks([...freq.entries()].map(([w,n])=>({w,n})).sort((a,b)=>b.n-a.n||a.w.localeCompare(b.w,"ja")),"n");
+    $("k2n").textContent=`${posts.length}件の「好きなところ」から、よく出たことば（数字は、そのことばが入っていた投稿の数）`;
+    $("k2c").replaceChildren(...words.slice(0,10).map(x=>{ const s=el("span",null,x.w); s.append(el("b",null,String(x.n))); s.style.fontSize=(20-Math.min(6,x._r-1))+"px"; return s; }));
+    const max=words[0].n;
+    fill($("k2l"),words,x=>row(x,{text:x.w,num:x.n,unit:"件",max}),30);
+  }catch(e){ $("k2n").textContent="読み込めませんでした。"; }
+}
+// ③ 推しTikTok：カテゴリごとのランキング
+async function k3(){
+  try{
+    const d=await getJ("/api/tiktok?all=1");
+    const box=$("k3b"); box.replaceChildren();
+    let total=0;
+    for(const [cat,name] of Object.entries(d.cats||{})){
+      const list=ranks((d.ranking&&d.ranking[cat])||[],"n"); total+=list.length;
+      box.append(el("h3",null,name));
+      if(!list.length){ box.append(el("p","empty","まだありません。")); continue; }
+      const ol=el("ol","rk"); box.append(ol);
+      const max=list[0].n;
+      fill(ol,list,x=>{
+        const a=el("a","th"); a.href=`https://www.tiktok.com/@${d.account}/video/${x.vid}`; a.target="_blank"; a.rel="noopener"; a.setAttribute("aria-label","TikTokで見る");
+        const f=document.createElement("iframe"); f.loading="lazy"; f.tabIndex=-1; f.title=""; f.setAttribute("aria-hidden","true");
+        f.src=`https://www.tiktok.com/player/v1/${x.vid}?controls=0&progress_bar=0&play_button=0&volume_control=0&fullscreen_button=0&timestamp=0&autoplay=0&loop=0&music_info=0&description=0&rel=0&native_context_menu=0&closed_caption=0`;
+        a.append(f);
+        const say=(x.comments||[]).slice(0,2).map(c=>"「"+c.text+"」").join(" ");
+        return row(x,{pic:a,text:x.title||"（タイトルなし）",num:x.n,unit:"推し",max,sub:(x.likes?`♥${x.likes}　`:"")+say});
+      },10);
+      ol.after(document.createComment(""));
+    }
+    $("k3n").textContent=total?`推しの数（動画を送った人＋いいねした人）が多い順。サムネイルを押すとTikTokで開きます`:"まだ投稿がありません。";
+  }catch(e){ $("k3n").textContent="読み込めませんでした。"; }
+}
+// ④ 23歳のちぃ記録：届いた写真をぜんぶ（月ごと）
+async function k4(){
+  try{
+    const d=await getJ("/api/photos");
+    const ps=d.photos||[];
+    if(!ps.length){ $("k4n").textContent="まだ写真がありません。"; return; }
+    $("k4n").textContent=`${ps.length}枚の写真で振り返る、23歳のちぃちゃんの1年（押すと大きく見られます）`;
+    const by=new Map(); for(const p of ps){ const k=p.d.slice(0,7); if(!by.has(k)) by.set(k,[]); by.get(k).push(p); }
+    const box=$("k4b"); box.replaceChildren();
+    for(const [k,list] of by){
+      const [y,m]=k.split("-").map(Number);
+      box.append(el("p","mo",`${y}年${m}月（${list.length}枚）`));
+      const g=el("div","pgrid"); box.append(g);
+      for(const p of list){
+        const [,,dd]=p.d.split("-").map(Number);
+        const b=el("button"); b.type="button";
+        const im=el("img"); im.loading="lazy"; im.alt=""; im.src=`/api/photos/img?id=${p.id}`; b.append(im);
+        b.append(el("span","d",p.dayKnown?`${m}/${dd}`:`${m}月ごろ`));
+        b.onclick=()=>view(`/api/photos/img?id=${p.id}&s=full`,(p.dayKnown?`${y}.${m}.${dd}`:`${y}年${m}月ごろ`)+(p.comment?"　"+p.comment:""));
+        g.append(b);
+      }
+    }
+  }catch(e){ $("k4n").textContent="読み込めませんでした。"; }
+}
+// ⑤ 好きパフォーマンス：わかる！の多い順
+async function k5(){
+  try{
+    const d=await getJ("/api/wakaru");
+    const cs=ranks((d.cards||[]).slice().sort((a,b)=>b.n-a.n||b.at-a.at),"n");
+    if(!cs.length){ $("k5n").textContent="まだカードがありません。"; return; }
+    $("k5n").textContent=`${cs.length}枚の「好きポイント」カードを、わかる！が多い順に`;
+    const max=cs[0].n||1;
+    fill($("k5l"),cs,x=>{
+      let pic=null;
+      if(x.video){ pic=el("img","pic"); pic.loading="lazy"; pic.alt=""; pic.src=`/api/wakaru/video?id=${x.id}&s=thumb`; pic.onclick=()=>window.open(`/api/wakaru/video?id=${x.id}`,"_blank"); }
+      return row(x,{pic,text:x.text,num:x.n,unit:"わかる",max});
+    },30);
+  }catch(e){ $("k5n").textContent="読み込めませんでした。"; }
+}
+// ⑥⑦ 投票：上位3つは表彰台、そのあとはぜんぶ
+const COLORS=["#e8a33c","#9aa5b4","#c27c4e"];
+async function poll(p,id,unit){
+  try{
+    const d=await getJ(`/api/kao/result?p=${p}`);
+    const ps=d.photos||[], key=unit==="pt"?"pt":"n";
+    if(!ps.length){ $(id+"n").textContent="まだ候補がありません。"; return; }
+    ranks(ps,key);
+    $(id+"n").textContent=unit==="pt"?`${d.voters}人が投票（1位3pt・2位2pt・3位1pt）`:`${d.voters}人が投票（1人3票）`;
+    const img=(x,s)=>`/api/kao/img?id=${x.id}${s?"&s="+s:""}`;
+    const top=ps.slice(0,3), order=[1,0,2].filter(i=>top[i]);
+    $(id+"p").replaceChildren(...order.map(i=>{
+      const x=top[i], b=el("button","pd"); b.type="button"; b.style.setProperty("--c",COLORS[Math.min(x._r,3)-1]);
+      b.append(el("span","r",(x._r===1?"👑 ":"")+x._r+"位"));
+      const fr=el("div","fr"), im=el("img"); im.alt=""; im.src=img(x); fr.append(im); b.append(fr);
+      const v=el("div","v",String(x[key])); v.append(el("small",null,unit)); b.append(v);
+      b.append(el("div","c",x.caption||""));
+      b.onclick=()=>view(img(x,"full"),`${x._r}位 ${x[key]}${unit}${x.caption?"　"+x.caption:""}`);
+      return b;
+    }));
+    const max=ps[0][key]||1;
+    fill($(id+"l"),ps.slice(3),x=>{
+      const pic=el("img","pic"); pic.loading="lazy"; pic.alt=""; pic.src=img(x);
+      pic.onclick=()=>view(img(x,"full"),`${x._r}位 ${x[key]}${unit}${x.caption?"　"+x.caption:""}`);
+      return row(x,{pic,text:x.caption||"",num:x[key],unit,max});
+    },30);
+  }catch(e){ $(id+"n").textContent="読み込めませんでした。"; }
+}
+k2(); k3(); k4(); k5(); poll("kao","k6","票"); poll("cos","k7","pt");
+</script>
+</body>
+</html>

@@ -272,7 +272,7 @@ async function ttGet({ request, env, who }) {
         comments: (by.get(r.vid) || []).slice(0, 20),
       }))
       .sort((a, b) => b.n - a.n || b.last - a.last)
-      .slice(0, 30)
+      .slice(0, url.searchParams.get("all") ? 1000 : 30)   // 結果まとめページ（?all=1）は全部
       .map(({ last, ...x }) => x);
   }
   return json({ ver, account: TT_ACCOUNT, cats: TT_CATS, ranking: out });
@@ -568,7 +568,7 @@ async function kaoResult({ request, env, who }) {
   const poll = pollOf(url.searchParams.get("p"));
   await ensureKao(env);
   const mine = await kaoMine(env, who, poll);
-  if (!mine.length && !(await isPreviewer(request, env))) return json({ needVote: true, error: "投票すると結果が見られます。" }, 403);
+  // 結果は誰でも見られる（投票していなくてもOK）
   const ver = (await env.DB.prepare("SELECT v FROM meta WHERE k=?").bind(pollVerKey(poll)).first())?.v ?? 0;
   if (url.searchParams.get("v") === String(ver)) return json({ same: true });
   const { results } = await env.DB.prepare(`SELECT p.id, p.caption,
