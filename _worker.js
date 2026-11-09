@@ -239,6 +239,11 @@ async function ttPost({ request, env, who }) {
   return json({ ok: true, vid: v.vid });
 }
 
+// サムネイルに使う場面（秒）。最初が真っ暗な動画などを、管理ページで少し先の場面にずらせる
+async function ttThumbTimes(env) {
+  try { await ensureSettings(env); const r = await env.DB.prepare("SELECT v FROM settings WHERE k='tt_thumb'").first(); return JSON.parse(r?.v || "{}"); }
+  catch (e) { return {}; }
+}
 async function ttGet({ request, env, who }) {
   const url = new URL(request.url);
   await ensureTT(env);
@@ -247,6 +252,7 @@ async function ttGet({ request, env, who }) {
   if (Number(url.searchParams.get("v") ?? -1) === ver) return json({ ver, same: true });
   const me = who.key;
   const out = {};
+  const tts = await ttThumbTimes(env);
   for (const cat of Object.keys(TT_CATS)) {
     const { results: vids } = await env.DB.prepare(
       "SELECT vid, MAX(title) AS title, MAX(at) AS last, COUNT(DISTINCT iph) AS pushers FROM tiktok WHERE cat=? AND hidden=0 GROUP BY vid"
@@ -267,7 +273,7 @@ async function ttGet({ request, env, who }) {
     for (const c of cm) { if (!by.has(c.vid)) by.set(c.vid, []); by.get(c.vid).push({ text: c.comment, at: c.at }); }
     out[cat] = vids
       .map((r) => ({
-        vid: r.vid, title: r.title || "", n: sc.get(r.vid) || r.pushers,
+        vid: r.vid, title: r.title || "", n: sc.get(r.vid) || r.pushers, t: Number(tts[r.vid]) || 0,
         likes: lk.get(r.vid)?.n || 0, liked: !!lk.get(r.vid)?.mine, last: r.last,
         comments: (by.get(r.vid) || []).slice(0, 20),
       }))
@@ -1174,7 +1180,20 @@ async function adminPost({ request, env }) {
     case "tiktok_list": {
       await ensureTT(env);
       const { results } = await env.DB.prepare("SELECT id, cat, vid, title, comment, at, hidden FROM tiktok ORDER BY id DESC LIMIT 1000").all();
-      return json({ items: results, cats: TT_CATS, account: TT_ACCOUNT });
+      return json({ items: results, cats: TT_CATS, account: TT_ACCOUNT, thumbT: await ttThumbTimes(env) });
+    }
+    case "tiktok_thumb_t": {
+      const vid = String(body.vid || "").replace(/\D/g, "");
+      const sec = Math.max(0, Math.min(600, Number(body.sec) || 0));
+      if (!vid) return json({ error: "動画が見つかりません。" }, 400);
+      const m = await ttThumbTimes(env);
+      if (sec) m[vid] = sec; else delete m[vid];
+      await ensureSettings(env);
+      await env.DB.batch([
+        env.DB.prepare("INSERT INTO settings (k, v) VALUES ('tt_thumb', ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(JSON.stringify(m)),
+        env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k='tt_ver'"),
+      ]);
+      return json({ ok: true, sec });
     }
     case "tiktok_hide":
     case "tiktok_show":

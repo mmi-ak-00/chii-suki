@@ -228,6 +228,23 @@ for(const t of [$("tabs"),$("tabs2")]) t.addEventListener("click",e=>{const b=e.
 
 // カードは動画ごとに作りおきして、変わったところだけ書き換える
 // （サムネイル用プレーヤーや再生中の動画を作り直すと、読み込み直しで一瞬消えてしまうため）
+
+// TikTokのサムネイル用プレーヤーを、指定の場面（秒）まで進めておく（最初が真っ暗な動画用）
+const ttSeekWant=new Map();   // iframeのwindow → 秒
+window.addEventListener("message",e=>{
+  let d=e.data; if(typeof d==="string"){ try{ d=JSON.parse(d); }catch(_){ return; } }
+  if(!d||!d["x-tiktok-player"]) return;
+  const t=ttSeekWant.get(e.source); if(!t) return;
+  if(d.type==="onPlayerReady"){ try{ e.source.postMessage({type:"seekTo",value:t,"x-tiktok-player":true},"*"); e.source.postMessage({type:"pause","x-tiktok-player":true},"*"); }catch(_){} }
+});
+function ttSeekThumb(f,t){
+  if(!t) return;
+  f.addEventListener("load",()=>{
+    ttSeekWant.set(f.contentWindow,t);
+    // 「準備できた」の合図が来なかったときのために、少しあとでも送っておく
+    for(const ms of [1200,2500]) setTimeout(()=>{ try{ f.contentWindow.postMessage({type:"seekTo",value:t,"x-tiktok-player":true},"*"); f.contentWindow.postMessage({type:"pause","x-tiktok-player":true},"*"); }catch(_){} },ms);
+  });
+}
 const cardCache=new Map();
 function getCard(key){
   let c=cardCache.get(key);
@@ -252,7 +269,7 @@ function fillThumb(c,v){
     const pv=document.createElement("iframe");
     pv.className="pv"; pv.loading="lazy"; pv.tabIndex=-1; pv.setAttribute("aria-hidden","true"); pv.title="";
     pv.src=`https://www.tiktok.com/player/v1/${v.vid}?controls=0&progress_bar=0&play_button=0&volume_control=0&fullscreen_button=0&timestamp=0&autoplay=0&loop=0&music_info=0&description=0&rel=0&native_context_menu=0&closed_caption=0`;
-    c.th.append(pv);
+    ttSeekThumb(pv,v.t); c.th.append(pv);
   }
   const pl=document.createElement("span"); pl.className="play"; c.th.append(pl);
   c.th.onclick=()=>{ if(demo) return; const vid=c.v.vid; openPlayer.has(vid)?openPlayer.delete(vid):openPlayer.add(vid); render(); };

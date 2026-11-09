@@ -223,6 +223,23 @@ async function k2(){
     fill($("k2l"),words,x=>row(x,{text:x.w,num:x.n,unit:"件",max}),30);
   }catch(e){ $("k2n").textContent="読み込めませんでした。"; }
 }
+
+// TikTokのサムネイル用プレーヤーを、指定の場面（秒）まで進めておく（最初が真っ暗な動画用）
+const ttSeekWant=new Map();   // iframeのwindow → 秒
+window.addEventListener("message",e=>{
+  let d=e.data; if(typeof d==="string"){ try{ d=JSON.parse(d); }catch(_){ return; } }
+  if(!d||!d["x-tiktok-player"]) return;
+  const t=ttSeekWant.get(e.source); if(!t) return;
+  if(d.type==="onPlayerReady"){ try{ e.source.postMessage({type:"seekTo",value:t,"x-tiktok-player":true},"*"); e.source.postMessage({type:"pause","x-tiktok-player":true},"*"); }catch(_){} }
+});
+function ttSeekThumb(f,t){
+  if(!t) return;
+  f.addEventListener("load",()=>{
+    ttSeekWant.set(f.contentWindow,t);
+    // 「準備できた」の合図が来なかったときのために、少しあとでも送っておく
+    for(const ms of [1200,2500]) setTimeout(()=>{ try{ f.contentWindow.postMessage({type:"seekTo",value:t,"x-tiktok-player":true},"*"); f.contentWindow.postMessage({type:"pause","x-tiktok-player":true},"*"); }catch(_){} },ms);
+  });
+}
 // ③ 推しTikTok：カテゴリごとのランキング
 async function k3(){
   try{
@@ -239,9 +256,9 @@ async function k3(){
         const a=el("a","th"); a.href=`https://www.tiktok.com/@${d.account}/video/${x.vid}`; a.target="_blank"; a.rel="noopener"; a.setAttribute("aria-label","TikTokで見る");
         const f=document.createElement("iframe"); f.loading="lazy"; f.tabIndex=-1; f.title=""; f.setAttribute("aria-hidden","true");
         f.src=`https://www.tiktok.com/player/v1/${x.vid}?controls=0&progress_bar=0&play_button=0&volume_control=0&fullscreen_button=0&timestamp=0&autoplay=0&loop=0&music_info=0&description=0&rel=0&native_context_menu=0&closed_caption=0`;
-        a.append(f);
+        ttSeekThumb(f,x.t); a.append(f);
         const say=(x.comments||[]).slice(0,2).map(c=>"「"+c.text+"」").join(" ");
-        return row(x,{pic:a,text:x.title||"（タイトルなし）",num:x.n,unit:"推し",max,sub:(x.likes?`♥${x.likes}　`:"")+say});
+        return row(x,{pic:a,text:x.likes?`♥${x.likes}`:"",num:x.n,unit:"推し",max,sub:say});
       },10);
       ol.after(document.createComment(""));
     }

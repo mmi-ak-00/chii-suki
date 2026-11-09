@@ -415,9 +415,9 @@ async function loadProjects(){
     }));
   }catch(e){ $("pmsg").textContent=e.message; }
 }
-let ttItems=[], ttCats={}, pendingT=null;
+let ttThumbT={}, ttItems=[], ttCats={}, pendingT=null;
 async function loadTT(){
-  try{ const d=await call("tiktok_list"); ttItems=d.items; ttCats=d.cats; drawTT(); }
+  try{ const d=await call("tiktok_list"); ttItems=d.items; ttCats=d.cats; ttThumbT=d.thumbT||{}; drawTT(); }
   catch(e){ $("tmsg").textContent=e.message; }
 }
 function drawTT(){
@@ -445,7 +445,12 @@ function drawTT(){
       catch(e){ out.textContent=e.message; }
       dg.disabled=false;
     };
-    li.append(...parts,tog,bb,del,dg,out); return li;
+    // サムネイルの場面（秒）：最初が真っ暗な動画は、少し先の場面をサムネイルにできる
+    const tw=document.createElement("label"); tw.className="m"; tw.style.cssText="display:inline-flex;align-items:center;gap:4px;white-space:nowrap";
+    const ti=document.createElement("input"); ti.type="number"; ti.min="0"; ti.max="600"; ti.step="0.5"; ti.value=ttThumbT[x.vid]||0; ti.style.cssText="flex:none;width:64px;padding:4px 6px;font-size:14px";
+    ti.onchange=async()=>{ try{ const d=await call("tiktok_thumb_t",null,{vid:x.vid,sec:ti.value}); ttThumbT[x.vid]=d.sec; $("tmsg").textContent=d.sec?`サムネイルを${d.sec}秒の場面にしました（同じ動画はまとめて変わります）。`:"サムネイルを最初の場面に戻しました。"; }catch(e){ $("tmsg").textContent=e.message; } };
+    tw.append("サムネの場面",ti,"秒");
+    li.append(...parts,tog,bb,del,tw,dg,out); return li;
   }));
 }
 $("treload").addEventListener("click",loadTT);
