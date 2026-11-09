@@ -920,6 +920,21 @@ function withShare(res, sharing) {
   r2.headers.append("Set-Cookie", `chii_sh_${sharing.pid}=${sharing.tok}; Path=/; Max-Age=${60 * 60 * 24 * 14}; HttpOnly; Secure; SameSite=Lax`);
   return r2;
 }
+// ===== 受付の開け閉め（全企画まとめて）。設定が "on" のときだけ受け付ける。なにも設定していなければ「終了」 =====
+async function isOpen(env) {
+  try { await ensureSettings(env); const r = await env.DB.prepare("SELECT v FROM settings WHERE k='accepting'").first(); return r?.v === "on"; }
+  catch (e) { return false; }
+}
+const CLOSED_MSG = "受付は終了しました。たくさんの参加ありがとうございました！";
+const CLOSED_CSS = `
+.closed-banner{background:linear-gradient(120deg,#e8517f,#a35fd1);color:#fff;border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;font-family:"M PLUS Rounded 1c",system-ui,sans-serif}
+.closed-banner b{font-weight:800;font-size:16px}
+.closed-banner span{font-size:13px;opacity:.95}
+.closed-banner a{align-self:flex-start;margin-top:6px;color:#fff;font-weight:800;font-size:13px;text-decoration:none;background:rgba(255,255,255,.22);border-radius:999px;padding:5px 12px}
+/* 入力する場所をかくす・押せなくする */
+#f,#kikkake,section.push,section.send,section.add,#bar,#vguide,.done{display:none!important}
+.like,.wk,.say,.ph,.vpick{pointer-events:none!important}
+.say{display:none!important}`;
 async function previewToken(env) { return (await sha("preview:" + env.ADMIN_KEY)).slice(0, 40); }
 async function isPreviewer(request, env) {
   if (!env.ADMIN_KEY) return false;
@@ -1009,6 +1024,12 @@ async function adminPost({ request, env }) {
         env.DB.prepare("UPDATE meta SET v = v + 1 WHERE k IN ('kao_ver','cos_ver')"),
       ]);
       return json({ ok: true });
+    }
+    case "get_accepting": return json({ open: await isOpen(env) });
+    case "set_accepting": {
+      await ensureSettings(env);
+      await env.DB.prepare("INSERT INTO settings (k, v) VALUES ('accepting', ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(body.open ? "on" : "off").run();
+      return json({ ok: true, open: !!body.open });
     }
     case "ban_item": {
       const r = await banItem(env, String(body.kind || ""), id);
@@ -1210,6 +1231,7 @@ export default {
     const who = isApi ? await ttWho(request, env) : null;
     const c = { request, env, ctx, who };
     if (isApi && request.method === "POST") {
+      if (!(await isOpen(env))) return withUidCookie(json({ error: CLOSED_MSG, closed: true }, 403), who);
       try {
         if (await checkBan(request, env, who)) return withUidCookie(json({ error: "現在このサイトには投稿できません。" }, 403), who);
       } catch (e) { /* 確かめられないときは通す */ }
@@ -1295,6 +1317,13 @@ export default {
     if (type.includes("text/html") && typeof HTMLRewriter !== "undefined") {
       const fix = { element(el) { el.setAttribute("content", new URL(el.getAttribute("content") || "/ogp.png", url).toString()); } };
       let rw = new HTMLRewriter();
+      const pn = url.pathname.replace(/^\/+|\.html$|\/+$/g, "");
+      if (/^kikaku[2-7]$/.test(pn) && !(await isOpen(env))) {
+        rw = rw.on("head", { element(el) { el.append(`<style>${CLOSED_CSS}</style>`, { html: true }); } })
+          .on("header", { element(el) {
+            el.after('<div class="closed-banner" role="status"><b>受付は終了しました🎉</b><span>たくさんの参加ありがとうございました！ 今は結果を見ることだけできます。</span><a href="/kekka">🏆 企画の結果まとめを見る →</a></div>', { html: true });
+          } });
+      }
       if (sharing && !previewing) {
         rw = rw.on("body", { element(el) {
           el.prepend('<div style="position:sticky;top:0;z-index:50;background:#3b2a33;color:#fff;font:700 13px/1.5 system-ui,sans-serif;text-align:center;padding:8px 12px">先行公開中（このページはまだ一般公開前です。URLを知っている人だけが見られます）</div>', { html: true });

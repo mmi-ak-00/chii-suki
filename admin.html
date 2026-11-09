@@ -18,6 +18,8 @@ form{display:flex;gap:8px;flex-wrap:wrap}
 input{flex:1 1 200px;min-width:0;font:inherit;font-size:16px;padding:10px 14px;border:2px solid var(--line);border-radius:12px;background:var(--surface);color:var(--fg)}
 button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:8px 14px;cursor:pointer;background:var(--accent);color:var(--ink)}
 button.sub{background:var(--line);color:var(--fg)}
+.accept{display:flex;flex-direction:column;gap:6px;align-items:flex-start;border:2px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--surface)}
+.accept.off{border-color:var(--accent)}
 .share{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#fff8d6;border-radius:12px;padding:10px 12px;margin-top:4px}
 .share b{flex-basis:100%;font-size:13px}
 .share .m{flex-basis:100%}
@@ -177,6 +179,11 @@ button,a,label,select,input,textarea,summary,.cal,.tl-scroll,.cloud{touch-action
   </section>
   <section id="projectsView" hidden style="display:flex;flex-direction:column;gap:12px">
     <p class="msg" id="pmsg">「公開する」を押した企画だけがトップに表示されます。公開前の企画は「COMING SOON」と番号だけが出ます。「プレビューで見る」から、公開前のページをあなただけ確認できます。</p>
+    <div class="accept" id="accept">
+      <b id="acT">受付の状態：読み込み中…</b>
+      <span class="m" id="acD"></span>
+      <button type="button" id="acBtn" hidden></button>
+    </div>
     <ul id="projects"></ul>
   </section>
   <div id="postsView" hidden style="display:flex;flex-direction:column;gap:16px">
@@ -329,7 +336,24 @@ $("tabs").addEventListener("click",e=>{
   loadCounts();
 });
 const NUM="①②③④⑤⑥⑦⑧⑨⑩";
+// 全企画の受付（投稿・いいね・わかる！・投票）をまとめて開け閉めする
+let acOpen=null, acArm=false;
+async function loadAccept(){
+  try{ const d=await call("get_accepting"); acOpen=d.open; drawAccept(); }catch(e){ $("acT").textContent="受付の状態を読み込めませんでした。"; }
+}
+function drawAccept(){
+  acArm=false;
+  $("accept").classList.toggle("off",!acOpen);
+  $("acT").textContent=acOpen?"🟢 受付中（投稿・いいね・わかる！・投票ができます）":"🔒 受付終了（どの企画も、見ることだけできます）";
+  $("acD").textContent=acOpen?"「受付を終了する」を押すと、全部の企画で入力できなくなり、各ページに「受付は終了しました」と出ます。":"各ページには「受付は終了しました」と結果まとめへのボタンが出ています。もう一度受け付けたいときは「受付を再開する」を押してください。";
+  $("acBtn").hidden=false; $("acBtn").className=acOpen?"del":"sub"; $("acBtn").textContent=acOpen?"受付を終了する":"受付を再開する";
+}
+$("acBtn").addEventListener("click",async()=>{
+  if(!acArm){ acArm=true; $("acBtn").textContent=acOpen?"本当に終了する":"本当に再開する"; return; }
+  try{ const d=await call("set_accepting",null,{open:!acOpen}); acOpen=d.open; drawAccept(); $("pmsg").textContent=acOpen?"受付を再開しました。":"受付を終了しました。"; }catch(e){ $("pmsg").textContent=e.message; }
+});
 async function loadProjects(){
+  loadAccept();
   try{
     const d=await call("projects");
     $("projects").replaceChildren(...d.projects.map((p,i)=>{
