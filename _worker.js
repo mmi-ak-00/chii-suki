@@ -936,7 +936,8 @@ const CLOSED_CSS = `
 .closed-banner{background:linear-gradient(120deg,#e8517f,#a35fd1);color:#fff;border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;font-family:"M PLUS Rounded 1c",system-ui,sans-serif}
 .closed-banner b{font-weight:800;font-size:16px}
 .closed-banner span{font-size:13px;opacity:.95}
-.closed-banner a{align-self:flex-start;margin-top:6px;color:#fff;font-weight:800;font-size:13px;text-decoration:none;background:rgba(255,255,255,.22);border-radius:999px;padding:5px 12px}
+.closed-banner .cb-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.closed-banner a{color:#fff;font-weight:800;font-size:13px;text-decoration:none;background:rgba(255,255,255,.22);border-radius:999px;padding:5px 12px}
 /* 入力する場所をかくす・押せなくする */
 #f,#kikkake,section.push,section.send,section.add,#bar,#vguide,.done{display:none!important}
 .like,.wk,.say,.ph,.vpick{pointer-events:none!important}
@@ -1340,7 +1341,9 @@ export default {
       if (/^kikaku[2-7]$/.test(pn) && !(await isOpen(env))) {
         rw = rw.on("head", { element(el) { el.append(`<style>${CLOSED_CSS}</style>`, { html: true }); } })
           .on("header", { element(el) {
-            el.after('<div class="closed-banner" role="status"><b>受付は終了しました🎉</b><span>たくさんの参加ありがとうございました！ 今は結果を見ることだけできます。</span><a href="/kekka">🏆 企画の結果まとめを見る →</a></div>', { html: true });
+            // 投票の企画（⑥⑦）は、その企画の結果ページへのボタンも出す
+            const own = (pn === "kikaku6" || pn === "kikaku7") ? `<a href="/${pn}-kekka">🗳️ この企画の投票結果を見る →</a>` : "";
+            el.after(`<div class="closed-banner" role="status"><b>受付は終了しました🎉</b><span>たくさんの参加ありがとうございました！ 今は結果を見ることだけできます。</span><div class="cb-links">${own}<a href="/kekka">🏆 企画の結果まとめを見る →</a></div></div>`, { html: true });
           } });
       }
       if (sharing && !previewing) {
